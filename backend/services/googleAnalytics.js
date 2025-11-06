@@ -16,6 +16,7 @@ let analyticsDataClient = null;
 export const initializeAnalytics = () => {
   try {
     const GA_PROPERTY_ID = process.env.GA_PROPERTY_ID;
+    const GA_SERVICE_ACCOUNT_BASE64 = process.env.GA_SERVICE_ACCOUNT_BASE64;
     const GA_KEY_FILE = process.env.GA_KEY_FILE_PATH;
 
     if (!GA_PROPERTY_ID) {
@@ -23,14 +24,23 @@ export const initializeAnalytics = () => {
       return null;
     }
 
-    if (!GA_KEY_FILE) {
-      console.warn("⚠️  GA_KEY_FILE_PATH not set in environment variables");
+    // Get credentials from either base64 env var (production) or file (local dev)
+    let credentials;
+    
+    if (GA_SERVICE_ACCOUNT_BASE64) {
+      // Production: decode base64 environment variable
+      console.log("📦 Loading GA credentials from base64 environment variable");
+      const decoded = Buffer.from(GA_SERVICE_ACCOUNT_BASE64, "base64").toString("utf8");
+      credentials = JSON.parse(decoded);
+    } else if (GA_KEY_FILE) {
+      // Local development: read from file
+      console.log("📁 Loading GA credentials from file");
+      const keyFilePath = join(__dirname, "..", GA_KEY_FILE);
+      credentials = JSON.parse(readFileSync(keyFilePath, "utf8"));
+    } else {
+      console.warn("⚠️  Neither GA_SERVICE_ACCOUNT_BASE64 nor GA_KEY_FILE_PATH set in environment variables");
       return null;
     }
-
-    // Load the service account key file
-    const keyFilePath = join(__dirname, "..", GA_KEY_FILE);
-    const credentials = JSON.parse(readFileSync(keyFilePath, "utf8"));
 
     // Create auth client
     const auth = new google.auth.GoogleAuth({
