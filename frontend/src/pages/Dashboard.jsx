@@ -201,6 +201,16 @@ const Dashboard = () => {
             <p className="stat-number">
               {formatNumber(analytics?.activeUsers)}
             </p>
+            <div className="sub-metrics">
+              <div className="sub-metric-item">
+                <span className="sub-metric-label">Sessions:</span>
+                <span className="sub-metric-value">{formatNumber(analytics?.sessions)}</span>
+              </div>
+              <div className="sub-metric-item">
+                <span className="sub-metric-label">Page Views:</span>
+                <span className="sub-metric-value">{formatNumber(analytics?.pageViews)}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -215,20 +225,32 @@ const Dashboard = () => {
             />
           </div>
           <div className="stat-content">
-            <h3>Sessions</h3>
-            <p className="stat-number">{formatNumber(analytics?.sessions)}</p>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
-            <MdOutlineFindInPage
-              style={{ color: "#374151", fontSize: "1.25rem" }}
-            />
-          </div>
-          <div className="stat-content">
-            <h3>Page Views</h3>
-            <p className="stat-number">{formatNumber(analytics?.pageViews)}</p>
+            <h3>Start</h3>
+            <p className="stat-number">
+              {(() => {
+                const buildMyBoxPage = topPages.find(page => 
+                  page.path.includes('/build-my-box')
+                );
+                const buildMyBoxVisitors = buildMyBoxPage?.views || 0;
+                const conversionRate = analytics?.activeUsers 
+                  ? (buildMyBoxVisitors / analytics.activeUsers) * 100 
+                  : 0;
+                return conversionRate.toFixed(1) + '%';
+              })()}
+            </p>
+            <div className="sub-metrics">
+              <div className="sub-metric-item">
+                <span className="sub-metric-label">Visitors:</span>
+                <span className="sub-metric-value">
+                  {(() => {
+                    const buildMyBoxPage = topPages.find(page => 
+                      page.path.includes('/build-my-box')
+                    );
+                    return formatNumber(buildMyBoxPage?.views || 0);
+                  })()}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
