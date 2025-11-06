@@ -15,7 +15,7 @@
 
 .stats-container {
   background: white;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   padding: 1.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
@@ -28,7 +28,7 @@
 }
 
 .stat-card {
-  background: #f9fafb;
+  background: white;
   border-radius: 0.5rem;
   padding: 0.875rem;
   border: 1px solid #e5e7eb;
@@ -142,9 +142,21 @@
   color: #374151;
 }
 
+.source-with-favicon {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.source-favicon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .dashboard-content {
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .action-buttons {

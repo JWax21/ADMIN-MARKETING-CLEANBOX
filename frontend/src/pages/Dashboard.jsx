@@ -223,47 +223,47 @@ const Dashboard = () => {
             </div>
           </div>
 
-        <div className="stat-card">
-          <div className="stat-card-header">
-            <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
-              <PiKeyReturnFill
-                style={{
-                  color: "#374151",
-                  fontSize: "1.125rem",
-                  transform: "scaleX(-1)",
-                }}
-              />
+          <div className="stat-card">
+            <div className="stat-card-header">
+              <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+                <PiKeyReturnFill
+                  style={{
+                    color: "#374151",
+                    fontSize: "1.125rem",
+                    transform: "scaleX(-1)",
+                  }}
+                />
+              </div>
+              <h3>Start</h3>
             </div>
-            <h3>Start</h3>
-          </div>
-          <div className="stat-content">
-            <p className="stat-number">
-              {(() => {
-                const buildMyBoxPage = topPages.find((page) =>
-                  page.path.includes("/build-my-box")
-                );
-                return formatNumber(buildMyBoxPage?.views || 0);
-              })()}
-            </p>
-            <div className="sub-metrics">
-              <div className="sub-metric-item">
-                <span className="sub-metric-label">Percentage:</span>
-                <span className="sub-metric-value">
-                  {(() => {
-                    const buildMyBoxPage = topPages.find((page) =>
-                      page.path.includes("/build-my-box")
-                    );
-                    const buildMyBoxVisitors = buildMyBoxPage?.views || 0;
-                    const conversionRate = analytics?.activeUsers
-                      ? (buildMyBoxVisitors / analytics.activeUsers) * 100
-                      : 0;
-                    return conversionRate.toFixed(1) + "%";
-                  })()}
-                </span>
+            <div className="stat-content">
+              <p className="stat-number">
+                {(() => {
+                  const buildMyBoxPage = topPages.find((page) =>
+                    page.path.includes("/build-my-box")
+                  );
+                  return formatNumber(buildMyBoxPage?.views || 0);
+                })()}
+              </p>
+              <div className="sub-metrics">
+                <div className="sub-metric-item">
+                  <span className="sub-metric-label">Percentage:</span>
+                  <span className="sub-metric-value">
+                    {(() => {
+                      const buildMyBoxPage = topPages.find((page) =>
+                        page.path.includes("/build-my-box")
+                      );
+                      const buildMyBoxVisitors = buildMyBoxPage?.views || 0;
+                      const conversionRate = analytics?.activeUsers
+                        ? (buildMyBoxVisitors / analytics.activeUsers) * 100
+                        : 0;
+                      return conversionRate.toFixed(1) + "%";
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
         <div className="stat-card">
           <div className="stat-card-header">
@@ -272,113 +272,113 @@ const Dashboard = () => {
                 style={{ color: "#374151", fontSize: "1.125rem" }}
               />
             </div>
-            <h3>Conversions</h3>
+            <h3>Checkout</h3>
           </div>
           <div className="stat-content">
             <p className="stat-number">
-              {formatNumber(analytics?.conversions)}
+              {(() => {
+                const checkoutPage = topPages.find((page) =>
+                  page.path.includes("/checkout")
+                );
+                return formatNumber(checkoutPage?.views || 0);
+              })()}
             </p>
             <div className="sub-metrics">
               <div className="sub-metric-item">
-                <span className="sub-metric-label">Checkout:</span>
+                <span className="sub-metric-label">Conversions:</span>
                 <span className="sub-metric-value">
-                  {(() => {
-                    const checkoutPage = topPages.find((page) =>
-                      page.path.includes("/checkout")
-                    );
-                    return formatNumber(checkoutPage?.views || 0);
-                  })()}
+                  {formatNumber(analytics?.conversions)}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        <div
-          className="stat-card"
-          style={{
-            backgroundColor: getPerformanceColor(
-              analytics?.avgSessionDuration,
-              benchmarks.avgSessionDuration
-            ),
-          }}
-        >
-          <div className="stat-card-header">
-            <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
-              <LuAlarmClock
-                style={{ color: "#374151", fontSize: "1.125rem" }}
-              />
+          <div
+            className="stat-card"
+            style={{
+              backgroundColor: getPerformanceColor(
+                analytics?.avgSessionDuration,
+                benchmarks.avgSessionDuration
+              ),
+            }}
+          >
+            <div className="stat-card-header">
+              <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+                <LuAlarmClock
+                  style={{ color: "#374151", fontSize: "1.125rem" }}
+                />
+              </div>
+              <h3>Avg. Duration</h3>
             </div>
-            <h3>Avg. Duration</h3>
-          </div>
-          <div className="stat-content">
-            <p className="stat-number">
-              {formatDuration(analytics?.avgSessionDuration)}
-            </p>
-            <div className="benchmark-data">
-              <div className="benchmark-item">
-                <span className="benchmark-label">75th:</span>
-                <span className="benchmark-value">
-                  {formatDuration(benchmarks.avgSessionDuration.percentile75)}
-                </span>
-              </div>
-              <div className="benchmark-item">
-                <span className="benchmark-label">Median:</span>
-                <span className="benchmark-value">
-                  {formatDuration(benchmarks.avgSessionDuration.median)}
-                </span>
-              </div>
-              <div className="benchmark-item">
-                <span className="benchmark-label">25th:</span>
-                <span className="benchmark-value">
-                  {formatDuration(benchmarks.avgSessionDuration.percentile25)}
-                </span>
+            <div className="stat-content">
+              <p className="stat-number">
+                {formatDuration(analytics?.avgSessionDuration)}
+              </p>
+              <div className="benchmark-data">
+                <div className="benchmark-item">
+                  <span className="benchmark-label">75th:</span>
+                  <span className="benchmark-value">
+                    {formatDuration(benchmarks.avgSessionDuration.percentile75)}
+                  </span>
+                </div>
+                <div className="benchmark-item">
+                  <span className="benchmark-label">Median:</span>
+                  <span className="benchmark-value">
+                    {formatDuration(benchmarks.avgSessionDuration.median)}
+                  </span>
+                </div>
+                <div className="benchmark-item">
+                  <span className="benchmark-label">25th:</span>
+                  <span className="benchmark-value">
+                    {formatDuration(benchmarks.avgSessionDuration.percentile25)}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div
-          className="stat-card"
-          style={{
-            backgroundColor: getPerformanceColor(
-              analytics?.bounceRate,
-              benchmarks.bounceRate
-            ),
-          }}
-        >
-          <div className="stat-card-header">
-            <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
-              <IoMdExit style={{ color: "#374151", fontSize: "1.125rem" }} />
+          <div
+            className="stat-card"
+            style={{
+              backgroundColor: getPerformanceColor(
+                analytics?.bounceRate,
+                benchmarks.bounceRate
+              ),
+            }}
+          >
+            <div className="stat-card-header">
+              <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+                <IoMdExit style={{ color: "#374151", fontSize: "1.125rem" }} />
+              </div>
+              <h3>Bounce Rate</h3>
             </div>
-            <h3>Bounce Rate</h3>
-          </div>
-          <div className="stat-content">
-            <p className="stat-number">
-              {analytics?.bounceRate?.toFixed(1)}%
-            </p>
-            <div className="benchmark-data">
-              <div className="benchmark-item">
-                <span className="benchmark-label">75th:</span>
-                <span className="benchmark-value">
-                  {benchmarks.bounceRate.percentile75.toFixed(1)}%
-                </span>
-              </div>
-              <div className="benchmark-item">
-                <span className="benchmark-label">Median:</span>
-                <span className="benchmark-value">
-                  {benchmarks.bounceRate.median.toFixed(1)}%
-                </span>
-              </div>
-              <div className="benchmark-item">
-                <span className="benchmark-label">25th:</span>
-                <span className="benchmark-value">
-                  {benchmarks.bounceRate.percentile25.toFixed(1)}%
-                </span>
+            <div className="stat-content">
+              <p className="stat-number">
+                {analytics?.bounceRate?.toFixed(1)}%
+              </p>
+              <div className="benchmark-data">
+                <div className="benchmark-item">
+                  <span className="benchmark-label">75th:</span>
+                  <span className="benchmark-value">
+                    {benchmarks.bounceRate.percentile75.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="benchmark-item">
+                  <span className="benchmark-label">Median:</span>
+                  <span className="benchmark-value">
+                    {benchmarks.bounceRate.median.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="benchmark-item">
+                  <span className="benchmark-label">25th:</span>
+                  <span className="benchmark-value">
+                    {benchmarks.bounceRate.percentile25.toFixed(1)}%
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
         </div>
       </div>
 
@@ -386,7 +386,7 @@ const Dashboard = () => {
         {/* Daily Trend */}
         <div className="card trend-card">
           <div className="trend-header">
-            <h2>Daily Trend</h2>
+            <h2>Traffic</h2>
             {dailyTrend.length > 0 && (
               <div className="today-box">
                 <span className="today-text">
@@ -535,7 +535,19 @@ const Dashboard = () => {
                 <tbody>
                   {trafficSources.map((source, index) => (
                     <tr key={index}>
-                      <td>{source.source}</td>
+                      <td>
+                        <div className="source-with-favicon">
+                          <img
+                            src={`https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${source.source}&size=32`}
+                            alt=""
+                            className="source-favicon"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                          <span>{source.source}</span>
+                        </div>
+                      </td>
                       <td>{source.medium}</td>
                       <td className="number-cell">
                         {formatNumber(source.sessions)}
