@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
 import apiClient from "../api/axios";
+import { VscGraphLine } from "react-icons/vsc";
+import { PiKeyReturnFill } from "react-icons/pi";
+import { MdOutlineFindInPage } from "react-icons/md";
+import { LuAlarmClock } from "react-icons/lu";
+import { IoMdExit } from "react-icons/io";
+import { AiFillDollarCircle } from "react-icons/ai";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -134,74 +140,68 @@ const Dashboard = () => {
       {/* Overview Metrics */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: "#dbeafe" }}>
-            <span style={{ color: "#3b82f6" }}>👥</span>
+          <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+            <VscGraphLine style={{ color: "#374151", fontSize: "1.5rem" }} />
           </div>
           <div className="stat-content">
             <h3>Active Users</h3>
             <p className="stat-number">
               {formatNumber(analytics?.activeUsers)}
             </p>
-            <span className="stat-label">Total visitors</span>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: "#d1fae5" }}>
-            <span style={{ color: "#10b981" }}>📊</span>
+          <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+            <PiKeyReturnFill style={{ color: "#374151", fontSize: "1.5rem", transform: "scaleY(-1)" }} />
           </div>
           <div className="stat-content">
             <h3>Sessions</h3>
             <p className="stat-number">{formatNumber(analytics?.sessions)}</p>
-            <span className="stat-label">Total sessions</span>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: "#fef3c7" }}>
-            <span style={{ color: "#f59e0b" }}>📄</span>
+          <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+            <MdOutlineFindInPage style={{ color: "#374151", fontSize: "1.5rem" }} />
           </div>
           <div className="stat-content">
             <h3>Page Views</h3>
             <p className="stat-number">{formatNumber(analytics?.pageViews)}</p>
-            <span className="stat-label">Total views</span>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: "#e0e7ff" }}>
-            <span style={{ color: "#6366f1" }}>⏱️</span>
+          <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+            <LuAlarmClock style={{ color: "#374151", fontSize: "1.5rem" }} />
           </div>
           <div className="stat-content">
             <h3>Avg. Duration</h3>
             <p className="stat-number">
               {formatDuration(analytics?.avgSessionDuration)}
             </p>
-            <span className="stat-label">Session duration</span>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: "#fce7f3" }}>
-            <span style={{ color: "#ec4899" }}>📈</span>
+          <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+            <IoMdExit style={{ color: "#374151", fontSize: "1.5rem" }} />
           </div>
           <div className="stat-content">
             <h3>Bounce Rate</h3>
             <p className="stat-number">{analytics?.bounceRate?.toFixed(1)}%</p>
-            <span className="stat-label">Visitor bounce</span>
           </div>
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon" style={{ backgroundColor: "#dcfce7" }}>
-            <span style={{ color: "#16a34a" }}>🎯</span>
+          <div className="stat-icon" style={{ backgroundColor: "#e5e7eb" }}>
+            <AiFillDollarCircle style={{ color: "#374151", fontSize: "1.5rem" }} />
           </div>
           <div className="stat-content">
             <h3>Conversions</h3>
             <p className="stat-number">
               {formatNumber(analytics?.conversions)}
             </p>
-            <span className="stat-label">Total conversions</span>
           </div>
         </div>
       </div>
