@@ -5,6 +5,7 @@
   min-height: 100vh;
   background: white;
   padding: 1rem;
+  font-family: "Montserrat", sans-serif;
 }
 
 .login-card {
@@ -15,11 +16,13 @@
     0 10px 10px -5px rgba(0, 0, 0, 0.04);
   width: 100%;
   max-width: 400px;
+  font-family: "Montserrat", sans-serif;
 }
 
 .login-header {
   text-align: center;
   margin-bottom: 2rem;
+  font-family: "Montserrat", sans-serif;
 }
 
 .login-header h1 {
@@ -27,11 +30,13 @@
   font-weight: 400;
   color: #6b7280;
   margin-bottom: 0.5rem;
+  font-family: "Montserrat", sans-serif;
 }
 
 .login-header p {
   color: #6b7280;
   font-size: 0.875rem;
+  font-family: "Montserrat", sans-serif;
 }
 
 .login-card form .btn-primary {
@@ -39,10 +44,12 @@
   margin-top: 1.5rem;
   justify-content: center;
   height: 3rem;
+  font-family: "Montserrat", sans-serif;
 }
 
 .login-card .form-group label {
   font-weight: 400;
+  font-family: "Montserrat", sans-serif;
 }
 
 .login-card .alert {
@@ -55,6 +62,42 @@
 }
 
 .login-card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.code-input-group {
+  margin-bottom: 1.5rem;
+}
+
+.code-inputs {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.code-input {
+  width: 3.5rem;
+  height: 4.5rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-family: "Montserrat", sans-serif;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: white;
+  color: #111827;
+  transition: all 0.2s;
+}
+
+.code-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.code-input:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

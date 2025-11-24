@@ -14,28 +14,56 @@ import TopPages from "./pages/TopPages";
 import TrafficSources from "./pages/TrafficSources";
 import SearchPerformance from "./pages/SearchPerformance";
 import Login from "./pages/Login";
-import { supabase } from "./config/supabase";
+import apiClient from "./api/axios";
 import "./App.css";
 
 function App() {
-  const [session, setSession] = useState(null);
+  const [authenticated, setAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    // Check if user is authenticated
+    const checkAuth = async () => {
+      const token = localStorage.getItem("admin_token");
+      
+      if (!token) {
+        setAuthenticated(false);
+        setLoading(false);
+        return;
+      }
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+      try {
+        const response = await apiClient.get("/api/auth/verify", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        
+        if (response.data.success && response.data.authenticated) {
+          setAuthenticated(true);
+          
+          // Check if token is about to expire (within 1 hour)
+          if (response.data.expiresAt) {
+            const expiresAt = response.data.expiresAt;
+            const oneHourFromNow = Date.now() + (60 * 60 * 1000);
+            if (expiresAt < oneHourFromNow) {
+              console.warn("Token expiring soon, user will need to re-login");
+            }
+          }
+        } else {
+          localStorage.removeItem("admin_token");
+          setAuthenticated(false);
+        }
+      } catch (error) {
+        // Token expired or invalid
+        localStorage.removeItem("admin_token");
+        setAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => subscription.unsubscribe();
+    checkAuth();
   }, []);
 
   if (loading) {
@@ -52,12 +80,12 @@ function App() {
       <Routes>
         <Route
           path="/login"
-          element={!session ? <Login /> : <Navigate to="/" />}
+          element={!authenticated ? <Login /> : <Navigate to="/" />}
         />
 
         <Route
           path="/"
-          element={session ? <Layout /> : <Navigate to="/login" />}
+          element={authenticated ? <Layout /> : <Navigate to="/login" />}
         >
           <Route index element={<Navigate to="/visitors" replace />} />
           <Route path="visitors" element={<Visitors />} />

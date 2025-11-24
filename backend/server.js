@@ -81,8 +81,33 @@ initializeAnalytics();
 // Initialize Google Search Console
 initializeSearchConsole();
 
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  // Don't exit the process, just log the error
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  // Don't exit the process, just log the error
+});
+
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+
+// Trust proxy for accurate IP addresses (important for Railway)
+app.set("trust proxy", true);
+
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || "http://localhost:5173",
@@ -92,6 +117,29 @@ app.use(
 app.use(express.json());
 app.use(morgan("dev"));
 
+// Root endpoint - API information
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Admin Dashboard API Server",
+    version: "1.0.0",
+    endpoints: {
+      health: "/api/health",
+      analytics: "/api/analytics/*",
+      visitors: "/api/visitors/*",
+      searchConsole: "/api/search-console/*",
+      users: "/api/users/*",
+      customers: "/api/customers/*",
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Favicon handler (return 204 No Content to avoid 404)
+app.get("/favicon.ico", (req, res) => {
+  res.status(204).end();
+});
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({
@@ -99,6 +147,182 @@ app.get("/api/health", (req, res) => {
     message: "Admin Dashboard API is running",
     timestamp: new Date().toISOString(),
   });
+});
+
+// Rate limiting for login attempts (in-memory store - use Redis in production)
+const loginAttempts = new Map();
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10;
+
+// Clean up old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, data] of loginAttempts.entries()) {
+    if (now - data.lastAttempt > LOCKOUT_DURATION * 2) {
+      loginAttempts.delete(key);
+    }
+  }
+}, 5 * 60 * 1000); // Every 5 minutes
+
+// Simple 4-digit code authentication endpoint with rate limiting
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const clientIp = req.ip || req.connection.remoteAddress || "unknown";
+    const now = Date.now();
+    
+    // Check rate limiting
+    const attemptData = loginAttempts.get(clientIp) || {
+      attempts: 0,
+      lockedUntil: 0,
+      requests: [],
+      lastAttempt: 0,
+    };
+    
+    // Check if account is locked
+    if (attemptData.lockedUntil > now) {
+      const remainingMinutes = Math.ceil((attemptData.lockedUntil - now) / 60000);
+      return res.status(429).json({
+        success: false,
+        error: `Too many failed attempts. Account locked for ${remainingMinutes} minute(s).`,
+        lockedUntil: attemptData.lockedUntil,
+      });
+    }
+    
+    // Check request rate limit
+    attemptData.requests = attemptData.requests.filter(
+      (time) => now - time < RATE_LIMIT_WINDOW
+    );
+    
+    if (attemptData.requests.length >= MAX_REQUESTS_PER_WINDOW) {
+      return res.status(429).json({
+        success: false,
+        error: "Too many requests. Please try again in a minute.",
+      });
+    }
+    
+    attemptData.requests.push(now);
+    
+    const { code } = req.body;
+    
+    // Get the admin code from environment variable
+    const ADMIN_CODE = process.env.ADMIN_CODE || "9521";
+    
+    if (!code || code.length !== 4 || !/^\d+$/.test(code)) {
+      attemptData.lastAttempt = now;
+      loginAttempts.set(clientIp, attemptData);
+      return res.status(400).json({
+        success: false,
+        error: "Invalid code format. Please enter a 4-digit code.",
+      });
+    }
+    
+    if (code !== ADMIN_CODE) {
+      attemptData.attempts += 1;
+      attemptData.lastAttempt = now;
+      
+      // Lock account after max attempts
+      if (attemptData.attempts >= MAX_ATTEMPTS) {
+        attemptData.lockedUntil = now + LOCKOUT_DURATION;
+        loginAttempts.set(clientIp, attemptData);
+        return res.status(401).json({
+          success: false,
+          error: `Too many failed attempts. Account locked for ${LOCKOUT_DURATION / 60000} minutes.`,
+          lockedUntil: attemptData.lockedUntil,
+        });
+      }
+      
+      loginAttempts.set(clientIp, attemptData);
+      return res.status(401).json({
+        success: false,
+        error: `Invalid code. ${MAX_ATTEMPTS - attemptData.attempts} attempt(s) remaining.`,
+        attemptsRemaining: MAX_ATTEMPTS - attemptData.attempts,
+      });
+    }
+    
+    // Successful login - reset attempts and generate secure token
+    loginAttempts.delete(clientIp);
+    
+    // Generate a more secure token with expiration (24 hours)
+    const crypto = await import("crypto");
+    const tokenData = {
+      code: code,
+      timestamp: now,
+      expiresAt: now + (24 * 60 * 60 * 1000), // 24 hours
+      random: crypto.randomBytes(16).toString("hex"),
+    };
+    
+    const sessionToken = Buffer.from(JSON.stringify(tokenData)).toString("base64");
+    
+    res.json({
+      success: true,
+      message: "Login successful",
+      token: sessionToken,
+      expiresAt: tokenData.expiresAt,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({
+      success: false,
+      error: "An error occurred during login",
+    });
+  }
+});
+
+// Verify session token
+app.get("/api/auth/verify", async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "");
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        authenticated: false,
+      });
+    }
+    
+    try {
+      // Decode and validate token
+      const decoded = JSON.parse(Buffer.from(token, "base64").toString("utf8"));
+      const now = Date.now();
+      
+      // Check if token is expired
+      if (decoded.expiresAt && decoded.expiresAt < now) {
+        return res.status(401).json({
+          success: false,
+          authenticated: false,
+          error: "Token expired",
+        });
+      }
+      
+      // Verify token structure
+      if (!decoded.timestamp || !decoded.random) {
+        return res.status(401).json({
+          success: false,
+          authenticated: false,
+          error: "Invalid token format",
+        });
+      }
+      
+      res.json({
+        success: true,
+        authenticated: true,
+        expiresAt: decoded.expiresAt,
+      });
+    } catch (decodeError) {
+      return res.status(401).json({
+        success: false,
+        authenticated: false,
+        error: "Invalid token",
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      authenticated: false,
+    });
+  }
 });
 
 // ==================== Google Analytics Endpoints ====================
@@ -1365,20 +1589,57 @@ app.use((req, res) => {
   });
 });
 
-// Error handler
+// Error handler (must be after all routes)
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  console.error("❌ Express Error Handler:", err);
+  console.error("Error Stack:", err.stack);
+  
+  // Don't send response if headers already sent
+  if (res.headersSent) {
+    return next(err);
+  }
+  
+  res.status(err.status || 500).json({
     success: false,
-    error: "Something went wrong!",
+    error: err.message || "Something went wrong!",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📍 API endpoint: http://localhost:${PORT}/api`);
   console.log(`🔗 Supabase URL: ${supabaseUrl}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+});
+
+// Handle server errors
+server.on("error", (error) => {
+  console.error("❌ Server Error:", error);
+});
+
+// Graceful shutdown
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  server.close(() => {
+    console.log("Process terminated");
+    if (mongoClient) {
+      mongoClient.close();
+    }
+    process.exit(0);
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down gracefully");
+  server.close(() => {
+    console.log("Process terminated");
+    if (mongoClient) {
+      mongoClient.close();
+    }
+    process.exit(0);
+  });
 });
 
 export default app;

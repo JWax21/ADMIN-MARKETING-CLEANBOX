@@ -1,31 +1,81 @@
-import React, { useState } from "react";
-import { supabase } from "../config/supabase";
+import React, { useState, useRef, useEffect } from "react";
+import apiClient from "../api/axios";
 import "./Login.css";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [code, setCode] = useState(["", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState(null);
+  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
+
+  // Auto-focus first input on mount
+  useEffect(() => {
+    inputRefs[0].current?.focus();
+  }, []);
+
+  const handleChange = (index, value) => {
+    // Only allow digits
+    if (value && !/^\d$/.test(value)) return;
+
+    const newCode = [...code];
+    newCode[index] = value;
+    setCode(newCode);
+
+    // Auto-focus next input
+    if (value && index < 3) {
+      inputRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    // Handle backspace
+    if (e.key === "Backspace" && !code[index] && index > 0) {
+      inputRefs[index - 1].current?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").slice(0, 4);
+    if (/^\d+$/.test(pastedData)) {
+      const newCode = pastedData.split("").concat(["", "", "", ""]).slice(0, 4);
+      setCode(newCode);
+      // Focus the last filled input or the first empty one
+      const lastIndex = Math.min(pastedData.length - 1, 3);
+      inputRefs[lastIndex].current?.focus();
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    const fullCode = code.join("");
+    
+    if (fullCode.length !== 4) {
+      setError("Please enter a 4-digit code");
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    setMessage(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const response = await apiClient.post("/api/auth/login", {
+        code: fullCode,
       });
 
-      if (error) throw error;
-
-      setMessage("Login successful!");
+      if (response.data.success) {
+        // Store token in localStorage
+        localStorage.setItem("admin_token", response.data.token);
+        // Reload to trigger auth check
+        window.location.href = "/";
+      }
     } catch (error) {
-      setError(error.message);
+      setError(
+        error.response?.data?.error || "Invalid code. Please try again."
+      );
+      // Clear code on error
+      setCode(["", "", "", ""]);
+      inputRefs[0].current?.focus();
     } finally {
       setLoading(false);
     }
@@ -35,45 +85,41 @@ const Login = () => {
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <h1>Sign In</h1>
+          <h1>Enter Access Code</h1>
+          <p>Please enter your 4-digit code</p>
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
-        {message && <div className="alert alert-success">{message}</div>}
 
         <form onSubmit={handleLogin}>
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              placeholder="admin@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-            />
+          <div className="form-group code-input-group">
+            <label htmlFor="code">Access Code</label>
+            <div className="code-inputs">
+              {code.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={inputRefs[index]}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleChange(index, e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(index, e)}
+                  onPaste={index === 0 ? handlePaste : undefined}
+                  className="code-input"
+                  disabled={loading}
+                  autoComplete="off"
+                />
+              ))}
+            </div>
           </div>
 
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={loading}
+            disabled={loading || code.join("").length !== 4}
           >
-            {loading ? "Loading..." : "Sign In"}
+            {loading ? "Verifying..." : "Access Dashboard"}
           </button>
         </form>
       </div>
