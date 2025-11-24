@@ -6,14 +6,19 @@ import { MdAbc } from "react-icons/md";
 import { PiRanking } from "react-icons/pi";
 import { FaCompressArrowsAlt } from "react-icons/fa";
 import { VscGraphLine } from "react-icons/vsc";
-import { supabase } from "../config/supabase";
+import { HiChartBar } from "react-icons/hi";
+import { MdTrendingUp } from "react-icons/md";
+import { MdSpeed } from "react-icons/md";
+import { MdInsights } from "react-icons/md";
+import { MdSearch } from "react-icons/md";
+import { MdGroups } from "react-icons/md";
 import "./Layout.css";
 
 const Layout = () => {
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem("admin_token");
     navigate("/login");
   };
 
@@ -46,6 +51,42 @@ const Layout = () => {
                 <FaCompressArrowsAlt />
               </span>
               Traffic Sources
+            </NavLink>
+            <NavLink to="/engagement" className="nav-link">
+              <span className="nav-icon">
+                <HiChartBar />
+              </span>
+              Engagement
+            </NavLink>
+            <NavLink to="/conversion" className="nav-link">
+              <span className="nav-icon">
+                <MdTrendingUp />
+              </span>
+              Conversion
+            </NavLink>
+            <NavLink to="/technical" className="nav-link">
+              <span className="nav-icon">
+                <MdSpeed />
+              </span>
+              Technical
+            </NavLink>
+            <NavLink to="/content" className="nav-link">
+              <span className="nav-icon">
+                <MdInsights />
+              </span>
+              Content
+            </NavLink>
+            <NavLink to="/seo" className="nav-link">
+              <span className="nav-icon">
+                <MdSearch />
+              </span>
+              SEO
+            </NavLink>
+            <NavLink to="/audience" className="nav-link">
+              <span className="nav-icon">
+                <MdGroups />
+              </span>
+              Audience
             </NavLink>
           </div>
 

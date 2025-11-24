@@ -13,6 +13,12 @@ import PageRankings from "./pages/PageRankings";
 import TopPages from "./pages/TopPages";
 import TrafficSources from "./pages/TrafficSources";
 import SearchPerformance from "./pages/SearchPerformance";
+import EngagementMetrics from "./pages/EngagementMetrics";
+import ConversionMetrics from "./pages/ConversionMetrics";
+import TechnicalPerformance from "./pages/TechnicalPerformance";
+import ContentInsights from "./pages/ContentInsights";
+import SEOMetrics from "./pages/SEOMetrics";
+import AudienceProfile from "./pages/AudienceProfile";
 import Login from "./pages/Login";
 import apiClient from "./api/axios";
 import "./App.css";
@@ -91,6 +97,12 @@ function App() {
           <Route path="visitors" element={<Visitors />} />
           <Route path="search-performance" element={<SearchPerformance />} />
           <Route path="traffic-sources" element={<TrafficSources />} />
+          <Route path="engagement" element={<EngagementMetrics />} />
+          <Route path="conversion" element={<ConversionMetrics />} />
+          <Route path="technical" element={<TechnicalPerformance />} />
+          <Route path="content" element={<ContentInsights />} />
+          <Route path="seo" element={<SEOMetrics />} />
+          <Route path="audience" element={<AudienceProfile />} />
           <Route path="page-index" element={<PageIndex />} />
           <Route path="page-rankings" element={<PageRankings />} />
           <Route path="top-pages" element={<TopPages />} />

@@ -30,6 +30,21 @@ import {
   getPageIndexStatus,
   getPageRankings,
 } from "./services/googleSearchConsole.js";
+import {
+  getEngagementMetrics,
+  getEngagementByPage,
+} from "./services/engagementMetrics.js";
+import {
+  getConversionMetrics,
+  getConversionBySource,
+} from "./services/conversionMetrics.js";
+import { getContentInsights } from "./services/contentInsights.js";
+import {
+  getTechnicalPerformance,
+  getCoreWebVitals,
+} from "./services/technicalPerformance.js";
+import { getSEOMetrics } from "./services/seoMetrics.js";
+import { getAudienceProfile } from "./services/audienceProfile.js";
 
 // Get current directory in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -327,6 +342,40 @@ app.get("/api/auth/verify", async (req, res) => {
 
 // ==================== Google Analytics Endpoints ====================
 
+// Get engagement metrics
+app.get("/api/analytics/engagement", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const metrics = await getEngagementMetrics(startDate, endDate);
+    res.json({ success: true, data: metrics });
+  } catch (error) {
+    console.error("Error fetching engagement metrics:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get engagement metrics by page
+app.get("/api/analytics/engagement/by-page", async (req, res) => {
+  try {
+    const {
+      startDate = "30daysAgo",
+      endDate = "today",
+      limit = 20,
+    } = req.query;
+    const data = await getEngagementByPage(startDate, endDate, parseInt(limit));
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching engagement by page:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // Get analytics overview metrics
 app.get("/api/analytics/overview", async (req, res) => {
   try {
@@ -400,6 +449,111 @@ app.get("/api/analytics/daily-trend", async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching daily trend:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get conversion metrics
+app.get("/api/analytics/conversion", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const metrics = await getConversionMetrics(startDate, endDate);
+    res.json({ success: true, data: metrics });
+  } catch (error) {
+    console.error("Error fetching conversion metrics:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get conversion metrics by source
+app.get("/api/analytics/conversion/by-source", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const data = await getConversionBySource(startDate, endDate);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching conversion by source:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get content insights
+app.get("/api/analytics/content", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const data = await getContentInsights(startDate, endDate);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching content insights:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get technical performance metrics
+app.get("/api/analytics/technical", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const data = await getTechnicalPerformance(startDate, endDate);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching technical performance:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get Core Web Vitals
+app.get("/api/analytics/core-web-vitals", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const data = await getCoreWebVitals(startDate, endDate);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching Core Web Vitals:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get SEO metrics
+app.get("/api/analytics/seo", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const data = await getSEOMetrics(startDate, endDate);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching SEO metrics:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get audience profile
+app.get("/api/analytics/audience", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const data = await getAudienceProfile(startDate, endDate);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching audience profile:", error);
     res.status(500).json({
       success: false,
       error: error.message,
