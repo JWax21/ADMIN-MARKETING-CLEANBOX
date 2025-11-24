@@ -29,7 +29,9 @@ const TopPages = () => {
         limit: 100,
       };
 
-      const response = await apiClient.get("/api/analytics/top-pages", { params });
+      const response = await apiClient.get("/api/analytics/top-pages", {
+        params,
+      });
 
       if (response.data.success) {
         setTopPages(response.data.data);
@@ -61,9 +63,12 @@ const TopPages = () => {
       };
 
       const encodedPath = encodeURIComponent(pagePath);
-      const response = await apiClient.get(`/api/visitors/by-page/${encodedPath}`, {
-        params,
-      });
+      const response = await apiClient.get(
+        `/api/visitors/by-page/${encodedPath}`,
+        {
+          params,
+        }
+      );
 
       if (response.data.success) {
         setPageVisitors(response.data.data);
@@ -108,25 +113,64 @@ const TopPages = () => {
 
   const getStateAbbreviation = (stateName) => {
     const stateMap = {
-      "Alabama": "AL", "Alaska": "AK", "Arizona": "AZ", "Arkansas": "AR", "California": "CA",
-      "Colorado": "CO", "Connecticut": "CT", "Delaware": "DE", "Florida": "FL", "Georgia": "GA",
-      "Hawaii": "HI", "Idaho": "ID", "Illinois": "IL", "Indiana": "IN", "Iowa": "IA",
-      "Kansas": "KS", "Kentucky": "KY", "Louisiana": "LA", "Maine": "ME", "Maryland": "MD",
-      "Massachusetts": "MA", "Michigan": "MI", "Minnesota": "MN", "Mississippi": "MS",
-      "Missouri": "MO", "Montana": "MT", "Nebraska": "NE", "Nevada": "NV",
-      "New Hampshire": "NH", "New Jersey": "NJ", "New Mexico": "NM", "New York": "NY",
-      "North Carolina": "NC", "North Dakota": "ND", "Ohio": "OH", "Oklahoma": "OK",
-      "Oregon": "OR", "Pennsylvania": "PA", "Rhode Island": "RI", "South Carolina": "SC",
-      "South Dakota": "SD", "Tennessee": "TN", "Texas": "TX", "Utah": "UT",
-      "Vermont": "VT", "Virginia": "VA", "Washington": "WA", "West Virginia": "WV",
-      "Wisconsin": "WI", "Wyoming": "WY", "District of Columbia": "DC"
+      Alabama: "AL",
+      Alaska: "AK",
+      Arizona: "AZ",
+      Arkansas: "AR",
+      California: "CA",
+      Colorado: "CO",
+      Connecticut: "CT",
+      Delaware: "DE",
+      Florida: "FL",
+      Georgia: "GA",
+      Hawaii: "HI",
+      Idaho: "ID",
+      Illinois: "IL",
+      Indiana: "IN",
+      Iowa: "IA",
+      Kansas: "KS",
+      Kentucky: "KY",
+      Louisiana: "LA",
+      Maine: "ME",
+      Maryland: "MD",
+      Massachusetts: "MA",
+      Michigan: "MI",
+      Minnesota: "MN",
+      Mississippi: "MS",
+      Missouri: "MO",
+      Montana: "MT",
+      Nebraska: "NE",
+      Nevada: "NV",
+      "New Hampshire": "NH",
+      "New Jersey": "NJ",
+      "New Mexico": "NM",
+      "New York": "NY",
+      "North Carolina": "NC",
+      "North Dakota": "ND",
+      Ohio: "OH",
+      Oklahoma: "OK",
+      Oregon: "OR",
+      Pennsylvania: "PA",
+      "Rhode Island": "RI",
+      "South Carolina": "SC",
+      "South Dakota": "SD",
+      Tennessee: "TN",
+      Texas: "TX",
+      Utah: "UT",
+      Vermont: "VT",
+      Virginia: "VA",
+      Washington: "WA",
+      "West Virginia": "WV",
+      Wisconsin: "WI",
+      Wyoming: "WY",
+      "District of Columbia": "DC",
     };
     return stateMap[stateName] || stateName;
   };
 
   const formatLocation = (city, region, country) => {
     const parts = [];
-    
+
     if (city && city !== "N/A" && city !== "(not set)") {
       parts.push(city);
     }
@@ -136,7 +180,7 @@ const TopPages = () => {
     if (country && country !== "N/A") {
       parts.push(country === "United States" ? "US" : country);
     }
-    
+
     return parts.length > 0 ? parts.join(", ") : "N/A";
   };
 
@@ -144,17 +188,19 @@ const TopPages = () => {
     if (!dateStr || dateStr.length !== 8) return false;
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
     const todayStr = `${year}${month}${day}`;
     return dateStr === todayStr;
   };
 
   if (loading && topPages.length === 0) {
     return (
-      <div className="loading-container">
-        <div className="spinner"></div>
-        <p>Loading top pages...</p>
+      <div className="top-pages-page">
+        <div className="loading-container">
+          <div className="spinner"></div>
+          <p>Loading top pages...</p>
+        </div>
       </div>
     );
   }
@@ -162,14 +208,8 @@ const TopPages = () => {
   if (error && topPages.length === 0) {
     return (
       <div className="top-pages-page">
-        <div className="page-header">
-          <h1>Top Pages</h1>
-        </div>
-        <div className="card">
-          <div className="error-message">
-            <h3>⚠️ Error Loading Top Pages</h3>
-            <p>{error}</p>
-          </div>
+        <div className="error-container">
+          <p>⚠️ {error}</p>
         </div>
       </div>
     );
@@ -177,28 +217,23 @@ const TopPages = () => {
 
   return (
     <div className="top-pages-page">
-      <div className="page-header">
-        <div>
-          <h1>Top Pages</h1>
-          <p>View top pages by page views and analyze their visitors</p>
+      <div className="top-pages-card">
+        <div className="top-pages-header">
+          <div className="top-pages-date-range-selector">
+            <label htmlFor="date-range">Period:</label>
+            <select
+              id="date-range"
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="top-pages-date-range-select"
+            >
+              <option value="7daysAgo">Last 7 Days</option>
+              <option value="30daysAgo">Last 30 Days</option>
+              <option value="90daysAgo">Last 90 Days</option>
+              <option value="365daysAgo">Last Year</option>
+            </select>
+          </div>
         </div>
-        <div className="date-range-selector">
-          <label htmlFor="date-range">Period:</label>
-          <select
-            id="date-range"
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="date-range-select"
-          >
-            <option value="7daysAgo">Last 7 Days</option>
-            <option value="30daysAgo">Last 30 Days</option>
-            <option value="90daysAgo">Last 90 Days</option>
-            <option value="365daysAgo">Last Year</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="card">
         <div className="top-pages-table-container">
           <table className="top-pages-table">
             <thead>
@@ -239,7 +274,10 @@ const TopPages = () => {
 
       {/* Visitors Panel */}
       {isPanelOpen && selectedPage && (
-        <div className="visitors-panel-overlay" onClick={() => setIsPanelOpen(false)}>
+        <div
+          className="visitors-panel-overlay"
+          onClick={() => setIsPanelOpen(false)}
+        >
           <div className="visitors-panel" onClick={(e) => e.stopPropagation()}>
             <div className="panel-header">
               <div className="panel-header-left">
@@ -302,7 +340,9 @@ const TopPages = () => {
                           return (
                             <tr
                               key={index}
-                              className={`visitor-row ${isToday(visitor.date) ? 'today-row' : ''}`}
+                              className={`visitor-row ${
+                                isToday(visitor.date) ? "today-row" : ""
+                              }`}
                             >
                               <td>{formatDate(visitor.date)}</td>
                               <td>
@@ -313,10 +353,14 @@ const TopPages = () => {
                                       : "visitor-type-returning"
                                   }`}
                                 >
-                                  {visitor.newVsReturning === "new" ? "New" : visitor.newVsReturning === "returning" ? "Returning" : "N/A"}
+                                  {visitor.newVsReturning === "new"
+                                    ? "New"
+                                    : visitor.newVsReturning === "returning"
+                                    ? "Returning"
+                                    : "N/A"}
                                 </span>
                               </td>
-                              <td style={{ paddingRight: '1.5rem' }}>
+                              <td style={{ paddingRight: "1.5rem" }}>
                                 <div className="device-info">
                                   <span className="device-category">
                                     {visitor.deviceCategory || "N/A"}
@@ -335,11 +379,18 @@ const TopPages = () => {
                                   </span>
                                 </div>
                               </td>
-                              <td style={{ paddingLeft: '1rem' }}>
-                                {formatLocation(visitor.city, visitor.region, visitor.country)}
+                              <td style={{ paddingLeft: "1rem" }}>
+                                {formatLocation(
+                                  visitor.city,
+                                  visitor.region,
+                                  visitor.country
+                                )}
                               </td>
                               <td>
-                                {visitor.sessionSource && visitor.sessionSource !== "N/A" ? visitor.sessionSource : "N/A"}
+                                {visitor.sessionSource &&
+                                visitor.sessionSource !== "N/A"
+                                  ? visitor.sessionSource
+                                  : "N/A"}
                               </td>
                               <td className="number-cell">
                                 {formatNumber(visitor.sessions)}
@@ -379,4 +430,3 @@ const TopPages = () => {
 };
 
 export default TopPages;
-

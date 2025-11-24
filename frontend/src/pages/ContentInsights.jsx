@@ -100,6 +100,14 @@ const ContentInsights = () => {
             >
               User Flows
             </button>
+            {insights.contentGrouping && insights.contentGrouping.length > 0 && (
+              <button
+                className={`tab ${activeTab === "grouping" ? "active" : ""}`}
+                onClick={() => setActiveTab("grouping")}
+              >
+                Content Grouping
+              </button>
+            )}
           </div>
 
           {activeTab === "exits" && (
@@ -207,6 +215,39 @@ const ContentInsights = () => {
                             ))}
                           </div>
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "grouping" && insights.contentGrouping && (
+            <div className="card">
+              <h2>Content Grouping</h2>
+              <p className="text-muted" style={{ marginBottom: "1rem" }}>
+                Content grouping data (if configured in GA4)
+              </p>
+              <div className="table-container">
+                <table className="insights-table">
+                  <thead>
+                    <tr>
+                      <th>Content Group 1</th>
+                      <th>Content Group 2</th>
+                      <th>Page Views</th>
+                      <th>Sessions</th>
+                      <th>Users</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {insights.contentGrouping.map((group, index) => (
+                      <tr key={index}>
+                        <td>{group.group1}</td>
+                        <td>{group.group2}</td>
+                        <td>{group.pageViews?.toLocaleString()}</td>
+                        <td>{group.sessions?.toLocaleString()}</td>
+                        <td>{group.users?.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

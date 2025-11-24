@@ -20,6 +20,7 @@ import {
   getVisitorDetails,
   getDailyVisitorTrends,
   getVisitorsByPage,
+  getPowerUsers,
 } from "./services/visitorAnalytics.js";
 import {
   initializeSearchConsole,
@@ -45,6 +46,7 @@ import {
 } from "./services/technicalPerformance.js";
 import { getSEOMetrics } from "./services/seoMetrics.js";
 import { getAudienceProfile } from "./services/audienceProfile.js";
+import { getSessionMetrics } from "./services/sessionMetrics.js";
 
 // Get current directory in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -561,6 +563,21 @@ app.get("/api/analytics/audience", async (req, res) => {
   }
 });
 
+// Get session metrics
+app.get("/api/analytics/sessions", async (req, res) => {
+  try {
+    const { startDate = "30daysAgo", endDate = "today" } = req.query;
+    const data = await getSessionMetrics(startDate, endDate);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching session metrics:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // ==================== Google Search Console Endpoints ====================
 
 // Get search performance overview
@@ -773,6 +790,33 @@ app.get("/api/visitors/by-page/:pagePath", async (req, res) => {
 });
 
 // Get detailed information about a specific visitor
+// Get power users (users with more than 3 sessions)
+app.get("/api/visitors/power-users", async (req, res) => {
+  try {
+    const {
+      startDate = "30daysAgo",
+      endDate = "today",
+      minSessions = 3,
+    } = req.query;
+    const powerUsers = await getPowerUsers(
+      startDate,
+      endDate,
+      parseInt(minSessions)
+    );
+
+    res.json({
+      success: true,
+      data: powerUsers,
+    });
+  } catch (error) {
+    console.error("Error fetching power users:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 app.get("/api/visitors/:visitorId", async (req, res) => {
   try {
     const { visitorId } = req.params;

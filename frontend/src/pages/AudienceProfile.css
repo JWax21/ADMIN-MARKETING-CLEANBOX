@@ -1,15 +1,40 @@
 .audience-profile-page {
-  padding: 2rem;
+  padding: 0 2rem 2rem 2rem;
   height: 100%;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
+.audience-profile-page h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.75rem 0;
+}
+
+.geographic-heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.geographic-heatmap-header h2 {
+  margin: 0;
+}
+
+.geographic-heatmap-stats {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
 .page-header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  gap: 1.5rem;
 }
 
 .date-range-selector {
@@ -34,29 +59,32 @@
   cursor: pointer;
 }
 
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+.audience-summary-cards {
+  display: flex;
   gap: 1rem;
+  flex: 1;
+  justify-content: flex-end;
 }
 
-.summary-card {
+.audience-summary-card {
   background: white;
   border-radius: 0.5rem;
-  padding: 1.5rem;
+  padding: 0.75rem 1rem;
   border: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
 }
 
-.summary-label {
-  font-size: 0.875rem;
+.audience-summary-label {
+  font-size: 0.625rem;
   color: #6b7280;
   font-weight: 500;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.summary-value {
-  font-size: 2rem;
+.audience-summary-value {
+  font-size: 1.25rem;
   font-weight: 700;
   color: #111827;
 }
@@ -148,5 +176,86 @@
   border-radius: 0.5rem;
   overflow: hidden;
   border: 1px solid #e5e7eb;
+  position: relative;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  min-width: 180px;
+}
+
+.legend-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.75rem;
+}
+
+.legend-scale {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid #d1d5db;
+  flex-shrink: 0;
+}
+
+.legend-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.legend-max {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.overview-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.overview-metric-card {
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.overview-metric-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.overview-metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
 }
 

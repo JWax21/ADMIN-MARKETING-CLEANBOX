@@ -38,7 +38,7 @@ export const getVisitorsList = async (
         ],
         dimensions: [
           { name: "date" },
-          { name: "deviceCategory" },
+          { name: "landingPage" }, // First page viewed
           { name: "operatingSystem" },
           { name: "browser" },
           { name: "country" },
@@ -68,25 +68,29 @@ export const getVisitorsList = async (
       },
     });
 
-    return (
+    const visitors =
       response.data.rows?.map((row, index) => {
         const dimensions = row.dimensionValues;
         const metrics = row.metricValues;
 
         // Create a composite ID from available dimensions
-        // Format: date-deviceCategory-operatingSystem-browser-country-region-city-newVsReturning-sessionSource-index
-        const compositeId = `${dimensions[0].value}-${dimensions[1].value}-${
-          dimensions[2].value
-        }-${dimensions[3].value}-${dimensions[4].value}-${
-          dimensions[5].value || "none"
-        }-${dimensions[6].value || "none"}-${dimensions[7].value}-${
+        // Format: date|||landingPage|||operatingSystem|||browser|||country|||region|||city|||newVsReturning|||sessionSource|||index
+        // Using ||| as delimiter to avoid conflicts with URLs that contain dashes
+        const compositeId = `${dimensions[0].value}|||${encodeURIComponent(
+          dimensions[1].value
+        )}|||${dimensions[2].value}|||${dimensions[3].value}|||${
+          dimensions[4].value
+        }|||${dimensions[5].value || "none"}|||${
+          dimensions[6].value || "none"
+        }|||${dimensions[7].value}|||${
           dimensions[8].value || "none"
-        }-${index}`;
+        }|||${index}`;
 
         return {
           id: compositeId, // Composite identifier
           date: dimensions[0].value,
-          deviceCategory: dimensions[1].value,
+          landingPage: dimensions[1].value || "", // First page viewed - may be empty
+          deviceCategory: "N/A", // Removed to make room for landingPage
           deviceBrand: "N/A", // Removed to stay within 9-dimension limit
           deviceModel: "N/A", // Removed to stay within 9-dimension limit
           operatingSystem: dimensions[2].value,
@@ -105,8 +109,103 @@ export const getVisitorsList = async (
           bounceRate: parseFloat(metrics[5].value) * 100,
           activeUsers: parseInt(metrics[6].value),
         };
-      }) || []
+      }) || [];
+
+    // For visitors with empty landingPage, fetch the first pagePath they visited
+    const visitorsNeedingFirstPage = visitors.filter(
+      (v) => !v.landingPage || v.landingPage === ""
     );
+
+    if (visitorsNeedingFirstPage.length > 0) {
+      try {
+        // Get first pagePath for each visitor group
+        // We'll use the same dimensions but add pagePath and order by date/hour ASC
+        const firstPageResponse =
+          await analyticsDataClient.properties.runReport({
+            property: `properties/${propertyId}`,
+            requestBody: {
+              dateRanges: [
+                {
+                  startDate,
+                  endDate,
+                },
+              ],
+              dimensions: [
+                { name: "date" },
+                { name: "hour" },
+                { name: "pagePath" },
+                { name: "operatingSystem" },
+                { name: "browser" },
+                { name: "country" },
+                { name: "region" },
+                { name: "city" },
+                { name: "newVsReturning" },
+              ],
+              metrics: [{ name: "screenPageViews" }],
+              orderBys: [
+                {
+                  dimension: {
+                    dimensionName: "date",
+                  },
+                  desc: false, // ASC to get earliest first
+                },
+                {
+                  dimension: {
+                    dimensionName: "hour",
+                  },
+                  desc: false, // ASC to get earliest hour first
+                },
+              ],
+              limit: 10000, // Get enough to match all visitors
+            },
+          });
+
+        // Create a map of first pages by visitor key
+        const firstPageMap = {};
+        if (firstPageResponse?.data?.rows) {
+          firstPageResponse.data.rows.forEach((row) => {
+            const dims = row.dimensionValues;
+            // Create a key from dimensions (same as visitor key but without landingPage and sessionSource)
+            // dims[0] = date, dims[1] = hour, dims[2] = pagePath, dims[3] = operatingSystem,
+            // dims[4] = browser, dims[5] = country, dims[6] = region, dims[7] = city,
+            // dims[8] = newVsReturning
+            const key = `${dims[0].value}|||${dims[3].value}|||${
+              dims[4].value
+            }|||${dims[5].value}|||${dims[6].value || "none"}|||${
+              dims[7].value || "none"
+            }|||${dims[8].value}`;
+
+            // Only set if not already set (first occurrence is the earliest)
+            if (!firstPageMap[key]) {
+              firstPageMap[key] = dims[2].value; // pagePath (index 2)
+            }
+          });
+        }
+
+        // Update visitors with empty landingPage
+        visitors.forEach((visitor) => {
+          if (!visitor.landingPage || visitor.landingPage === "") {
+            // Match without sessionSource since it's not in the first page query
+            const key = `${visitor.date}|||${visitor.operatingSystem}|||${
+              visitor.browser
+            }|||${visitor.country}|||${
+              visitor.region !== "N/A" ? visitor.region : "none"
+            }|||${visitor.city !== "N/A" ? visitor.city : "none"}|||${
+              visitor.newVsReturning
+            }`;
+
+            if (firstPageMap[key]) {
+              visitor.landingPage = firstPageMap[key];
+            }
+          }
+        });
+      } catch (error) {
+        console.warn("Error fetching first pages for visitors:", error);
+        // Continue without first pages - visitors will show N/A
+      }
+    }
+
+    return visitors;
   } catch (error) {
     console.error("Error fetching visitors list:", error);
     throw error;
@@ -129,10 +228,16 @@ export const getVisitorDetails = async (
 
   try {
     // Parse the composite ID to extract filter values
-    // Format: date-deviceCategory-operatingSystem-browser-country-region-city-newVsReturning-sessionSource-index
-    const parts = visitorId.split("-");
+    // Format: date|||landingPage|||operatingSystem|||browser|||country|||region|||city|||newVsReturning|||sessionSource|||index
+    // Using ||| as delimiter to avoid conflicts with URLs that contain dashes
+    const parts = visitorId.split("|||");
+    if (parts.length < 10) {
+      throw new Error(
+        `Invalid visitor ID format. Expected 10 parts, got ${parts.length}`
+      );
+    }
     const date = parts[0];
-    const deviceCategory = parts[1];
+    const landingPage = decodeURIComponent(parts[1]); // Decode the URL-encoded landing page
     const operatingSystem = parts[2];
     const browser = parts[3];
     const country = parts[4];
@@ -143,6 +248,8 @@ export const getVisitorDetails = async (
 
     // Build dimension filters - limit to essential filters to stay under 9 dimension limit
     // Note: GA4 counts dimension filters toward the 9-dimension limit
+    // We'll use only the most critical filters: date, landingPage, country, newVsReturning
+    // This reduces from 9 filters to 4, leaving room for 5 dimensions in the query
     const dimensionFilter = {
       andGroup: {
         expressions: [
@@ -155,33 +262,19 @@ export const getVisitorDetails = async (
               },
             },
           },
-          {
-            filter: {
-              fieldName: "deviceCategory",
-              stringFilter: {
-                matchType: "EXACT",
-                value: deviceCategory,
-              },
-            },
-          },
-          {
-            filter: {
-              fieldName: "operatingSystem",
-              stringFilter: {
-                matchType: "EXACT",
-                value: operatingSystem,
-              },
-            },
-          },
-          {
-            filter: {
-              fieldName: "browser",
-              stringFilter: {
-                matchType: "EXACT",
-                value: browser,
-              },
-            },
-          },
+          ...(landingPage && landingPage !== ""
+            ? [
+                {
+                  filter: {
+                    fieldName: "landingPage",
+                    stringFilter: {
+                      matchType: "EXACT",
+                      value: landingPage,
+                    },
+                  },
+                },
+              ]
+            : []),
           {
             filter: {
               fieldName: "country",
@@ -191,32 +284,6 @@ export const getVisitorDetails = async (
               },
             },
           },
-          ...(region
-            ? [
-                {
-                  filter: {
-                    fieldName: "region",
-                    stringFilter: {
-                      matchType: "EXACT",
-                      value: region,
-                    },
-                  },
-                },
-              ]
-            : []),
-          ...(city
-            ? [
-                {
-                  filter: {
-                    fieldName: "city",
-                    stringFilter: {
-                      matchType: "EXACT",
-                      value: city,
-                    },
-                  },
-                },
-              ]
-            : []),
           {
             filter: {
               fieldName: "newVsReturning",
@@ -226,19 +293,6 @@ export const getVisitorDetails = async (
               },
             },
           },
-          ...(sessionSource
-            ? [
-                {
-                  filter: {
-                    fieldName: "sessionSource",
-                    stringFilter: {
-                      matchType: "EXACT",
-                      value: sessionSource,
-                    },
-                  },
-                },
-              ]
-            : []),
         ],
       },
     };
@@ -255,13 +309,9 @@ export const getVisitorDetails = async (
         ],
         dimensions: [
           { name: "date" },
-          { name: "deviceCategory" },
           { name: "operatingSystem" },
           { name: "browser" },
           { name: "country" },
-          { name: "region" },
-          { name: "city" },
-          { name: "sessionSource" },
           { name: "newVsReturning" },
         ],
         metrics: [
@@ -279,6 +329,7 @@ export const getVisitorDetails = async (
 
     // Get device and technology details
     // Note: mobileDeviceBranding and mobileDeviceModel only work for mobile devices
+    // Reduced to 5 dimensions to stay within 9-dimension limit (4 filters + 5 dimensions)
     let deviceDetailsResponse = null;
     try {
       deviceDetailsResponse = await analyticsDataClient.properties.runReport({
@@ -296,7 +347,6 @@ export const getVisitorDetails = async (
             { name: "mobileDeviceModel" },
             { name: "browser" },
             { name: "operatingSystem" },
-            { name: "operatingSystemVersion" },
           ],
           metrics: [{ name: "sessions" }],
           dimensionFilter,
@@ -323,7 +373,6 @@ export const getVisitorDetails = async (
               { name: "screenResolution" },
               { name: "browser" },
               { name: "operatingSystem" },
-              { name: "operatingSystemVersion" },
             ],
             metrics: [{ name: "sessions" }],
             dimensionFilter,
@@ -365,7 +414,13 @@ export const getVisitorDetails = async (
             dimension: {
               dimensionName: "date",
             },
-            desc: true,
+            desc: false, // ASC to get earliest first
+          },
+          {
+            dimension: {
+              dimensionName: "hour",
+            },
+            desc: false, // ASC to get earliest hour first
           },
         ],
         limit: 100,
@@ -437,20 +492,20 @@ export const getVisitorDetails = async (
         const deviceDims = deviceDetails?.dimensionValues || [];
 
         // Determine if we have mobile device dimensions or just basic dimensions
-        const hasMobileDimensions = deviceDims.length >= 6;
+        const hasMobileDimensions = deviceDims.length >= 5;
         const screenResIndex = 0;
         const brandIndex = hasMobileDimensions ? 1 : -1;
         const modelIndex = hasMobileDimensions ? 2 : -1;
         const browserIndex = hasMobileDimensions ? 3 : 1;
         const osIndex = hasMobileDimensions ? 4 : 2;
-        const osVersionIndex = hasMobileDimensions ? 5 : 3;
+        const osVersionIndex = -1; // Removed to stay within dimension limit
 
         return {
           date: dims[0].value,
           device: {
-            category: dims[1].value,
-            os: dims[2].value,
-            browser: dims[3].value,
+            category: "N/A", // Removed to stay within dimension limit
+            os: dims[1].value,
+            browser: dims[2].value,
             screenResolution: deviceDims[screenResIndex]?.value || "N/A",
             brand:
               brandIndex >= 0
@@ -469,9 +524,9 @@ export const getVisitorDetails = async (
             isLimitedAdTracking: "N/A", // Not available in GA4 Data API
           },
           location: {
-            country: dims[4].value,
-            region: dims[5].value || "N/A",
-            city: dims[6].value || "N/A",
+            country: dims[3].value,
+            region: "N/A", // Removed to stay within dimension limit
+            city: "N/A", // Removed to stay within dimension limit
             metro: "N/A", // Not included to make room for newVsReturning
             latitude: "N/A", // Not available in GA4 Data API
             longitude: "N/A", // Not available in GA4 Data API
@@ -481,9 +536,9 @@ export const getVisitorDetails = async (
             provider: "N/A", // Deprecated in GA4
           },
           source: {
-            source: dims[7].value,
+            source: "N/A", // Removed to stay within dimension limit
           },
-          newVsReturning: dims[8].value || "N/A",
+          newVsReturning: dims[4].value || "N/A",
           session: {
             sessions: parseInt(metrics[0].value),
             pageViews: parseInt(metrics[1].value),
@@ -619,11 +674,16 @@ export const getVisitorDetails = async (
         };
       }) || [];
 
+    // Determine the actual first page from pageviews if landingPage was empty
+    // The pageviews are sorted by date ASC and hour ASC, so the first one is the landing page
+    const actualLandingPage = pageviews.length > 0 ? pageviews[0].path : null;
+
     return {
       visitorId,
       sessions,
       pageviews,
       events,
+      actualLandingPage, // The first page from pageviews (used when landingPage dimension is empty)
       summary: {
         totalSessions: sessions.length,
         totalPageViews: pageviews.reduce((sum, pv) => sum + pv.views, 0),
@@ -752,6 +812,167 @@ export const getVisitorsByPage = async (
     );
   } catch (error) {
     console.error("Error fetching visitors by page:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get power users (users with more than 3 sessions in the last 30 days)
+ * @param {string} startDate - Start date in YYYY-MM-DD format
+ * @param {string} endDate - End date in YYYY-MM-DD format
+ * @param {number} minSessions - Minimum number of sessions to qualify (default: 3)
+ */
+export const getPowerUsers = async (
+  startDate = "30daysAgo",
+  endDate = "today",
+  minSessions = 3
+) => {
+  const analyticsDataClient = getClient();
+  const propertyId = process.env.GA_PROPERTY_ID;
+
+  try {
+    // Get users with their session counts and metrics
+    const response = await analyticsDataClient.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [
+          {
+            startDate,
+            endDate,
+          },
+        ],
+        dimensions: [
+          { name: "date" },
+          { name: "operatingSystem" },
+          { name: "browser" },
+          { name: "country" },
+          { name: "region" },
+          { name: "city" },
+          { name: "newVsReturning" },
+          { name: "sessionSource" },
+          { name: "landingPage" },
+        ],
+        metrics: [
+          { name: "sessions" },
+          { name: "screenPageViews" },
+          { name: "averageSessionDuration" },
+          { name: "userEngagementDuration" },
+          { name: "engagedSessions" },
+          { name: "bounceRate" },
+          { name: "activeUsers" },
+        ],
+        orderBys: [
+          {
+            metric: {
+              metricName: "sessions",
+            },
+            desc: true,
+          },
+        ],
+        limit: 10000,
+      },
+    });
+
+    // Group by user characteristics and aggregate metrics
+    const userMap = new Map();
+
+    response.data.rows?.forEach((row) => {
+      const dimensions = row.dimensionValues;
+      const metrics = row.metricValues;
+
+      // Create a user key from dimensions (excluding date and landingPage to group across dates/pages)
+      // dimensions[0] = date, [1] = operatingSystem, [2] = browser, [3] = country,
+      // [4] = region, [5] = city, [6] = newVsReturning, [7] = sessionSource, [8] = landingPage
+      const userKey = `${dimensions[1].value}|||${dimensions[2].value}|||${
+        dimensions[3].value
+      }|||${dimensions[4].value || "none"}|||${
+        dimensions[5].value || "none"
+      }|||${dimensions[6].value}|||${dimensions[7].value || "none"}`;
+
+      const sessions = parseInt(metrics[0].value);
+      const pageViews = parseInt(metrics[1].value);
+      const avgSessionDuration = parseFloat(metrics[2].value);
+      const totalEngagementDuration = parseFloat(metrics[3].value);
+      const engagedSessions = parseInt(metrics[4].value);
+      const bounceRate = parseFloat(metrics[5].value);
+      const date = dimensions[0].value;
+      const landingPage = dimensions[8].value;
+
+      if (!userMap.has(userKey)) {
+        userMap.set(userKey, {
+          landingPage: landingPage, // Store first landing page
+          operatingSystem: dimensions[1].value,
+          browser: dimensions[2].value,
+          country: dimensions[3].value,
+          region: dimensions[4].value || "N/A",
+          city: dimensions[5].value || "N/A",
+          newVsReturning: dimensions[6].value,
+          sessionSource: dimensions[7].value || "N/A",
+          totalSessions: 0,
+          totalPageViews: 0,
+          totalEngagementDuration: 0,
+          totalEngagedSessions: 0,
+          totalBounceSessions: 0,
+          dates: [],
+          firstVisit: date,
+          lastVisit: date,
+        });
+      }
+
+      const user = userMap.get(userKey);
+      user.totalSessions += sessions;
+      user.totalPageViews += pageViews;
+      user.totalEngagementDuration += totalEngagementDuration;
+      user.totalEngagedSessions += engagedSessions;
+      user.totalBounceSessions += Math.round(sessions * bounceRate);
+      user.dates.push(date);
+      if (date < user.firstVisit) user.firstVisit = date;
+      if (date > user.lastVisit) user.lastVisit = date;
+    });
+
+    // Filter users with >= minSessions and calculate final metrics
+    const powerUsers = Array.from(userMap.values())
+      .filter((user) => user.totalSessions >= minSessions)
+      .map((user) => {
+        const avgSessionDuration =
+          user.totalSessions > 0
+            ? user.totalEngagementDuration / user.totalSessions
+            : 0;
+        const engagementRate =
+          user.totalSessions > 0
+            ? (user.totalEngagedSessions / user.totalSessions) * 100
+            : 0;
+        const bounceRate =
+          user.totalSessions > 0
+            ? (user.totalBounceSessions / user.totalSessions) * 100
+            : 0;
+
+        return {
+          id: `${user.operatingSystem}|||${user.browser}|||${user.country}|||${user.region}|||${user.city}|||${user.newVsReturning}|||${user.sessionSource}`,
+          landingPage: user.landingPage,
+          operatingSystem: user.operatingSystem,
+          browser: user.browser,
+          country: user.country,
+          region: user.region,
+          city: user.city,
+          newVsReturning: user.newVsReturning,
+          sessionSource: user.sessionSource,
+          sessions: user.totalSessions,
+          pageViews: user.totalPageViews,
+          avgSessionDuration,
+          totalEngagementDuration: user.totalEngagementDuration,
+          engagementRate,
+          bounceRate,
+          firstVisit: user.firstVisit,
+          lastVisit: user.lastVisit,
+          uniqueDays: new Set(user.dates).size,
+        };
+      })
+      .sort((a, b) => b.sessions - a.sessions);
+
+    return powerUsers;
+  } catch (error) {
+    console.error("Error fetching power users:", error);
     throw error;
   }
 };

@@ -91,6 +91,14 @@ const SEOMetrics = () => {
               </div>
               <div className="metric-description">Keywords tracked</div>
             </div>
+
+            <div className="metric-card">
+              <div className="metric-label">Referring Domains</div>
+              <div className="metric-value">
+                {metrics.referringDomains?.total?.toLocaleString() || 0}
+              </div>
+              <div className="metric-description">External domains linking to site</div>
+            </div>
           </div>
 
           {metrics.organicSearch?.sources && metrics.organicSearch.sources.length > 0 && (
@@ -146,6 +154,51 @@ const SEOMetrics = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {metrics.referringDomains?.domains && metrics.referringDomains.domains.length > 0 && (
+            <div className="card">
+              <h2>Referring Domains (Backlinks Alternative)</h2>
+              {metrics.referringDomains.note && (
+                <p style={{ fontSize: "0.875rem", color: "#6b7280", marginBottom: "1rem" }}>
+                  {metrics.referringDomains.note}
+                </p>
+              )}
+              <div className="table-container">
+                <table className="seo-table">
+                  <thead>
+                    <tr>
+                      <th>Domain</th>
+                      <th>Sessions</th>
+                      <th>Users</th>
+                      <th>Page Views</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.referringDomains.domains.map((domain, index) => (
+                      <tr key={index}>
+                        <td>{domain.domain}</td>
+                        <td>{domain.sessions?.toLocaleString()}</td>
+                        <td>{domain.users?.toLocaleString()}</td>
+                        <td>{domain.pageViews?.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {metrics.searchConsoleLinks && (
+            <div className="info-card">
+              <h3>Search Console Links Data</h3>
+              <p>
+                {metrics.searchConsoleLinks.apiAvailable
+                  ? "Links data from Search Console API"
+                  : metrics.searchConsoleLinks.externalLinks?.note ||
+                    "The Links report shown in Google Search Console UI is not available through the API. You can manually export this data from the Search Console interface, or use the referring domains data above from GA4."}
+              </p>
             </div>
           )}
 

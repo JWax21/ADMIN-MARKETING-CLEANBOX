@@ -3,15 +3,11 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { BsHandIndexThumb } from "react-icons/bs";
 import { MdPeopleAlt } from "react-icons/md";
 import { MdAbc } from "react-icons/md";
-import { PiRanking } from "react-icons/pi";
+import { PiRanking, PiComputerTowerBold } from "react-icons/pi";
 import { FaCompressArrowsAlt } from "react-icons/fa";
-import { VscGraphLine } from "react-icons/vsc";
-import { HiChartBar } from "react-icons/hi";
-import { MdTrendingUp } from "react-icons/md";
-import { MdSpeed } from "react-icons/md";
-import { MdInsights } from "react-icons/md";
-import { MdSearch } from "react-icons/md";
+import { FaStar } from "react-icons/fa6";
 import { MdGroups } from "react-icons/md";
+import { FaShareAlt } from "react-icons/fa";
 import "./Layout.css";
 
 const Layout = () => {
@@ -40,58 +36,22 @@ const Layout = () => {
               </span>
               Visitors
             </NavLink>
-            <NavLink to="/search-performance" className="nav-link">
-              <span className="nav-icon">
-                <VscGraphLine />
-              </span>
-              Search Performance
-            </NavLink>
             <NavLink to="/traffic-sources" className="nav-link">
               <span className="nav-icon">
                 <FaCompressArrowsAlt />
               </span>
               Traffic Sources
             </NavLink>
-            <NavLink to="/engagement" className="nav-link">
+            <NavLink to="/power-users" className="nav-link">
               <span className="nav-icon">
-                <HiChartBar />
+                <FaStar />
               </span>
-              Engagement
-            </NavLink>
-            <NavLink to="/conversion" className="nav-link">
-              <span className="nav-icon">
-                <MdTrendingUp />
-              </span>
-              Conversion
-            </NavLink>
-            <NavLink to="/technical" className="nav-link">
-              <span className="nav-icon">
-                <MdSpeed />
-              </span>
-              Technical
-            </NavLink>
-            <NavLink to="/content" className="nav-link">
-              <span className="nav-icon">
-                <MdInsights />
-              </span>
-              Content
-            </NavLink>
-            <NavLink to="/seo" className="nav-link">
-              <span className="nav-icon">
-                <MdSearch />
-              </span>
-              SEO
-            </NavLink>
-            <NavLink to="/audience" className="nav-link">
-              <span className="nav-icon">
-                <MdGroups />
-              </span>
-              Audience
+              Power Users
             </NavLink>
           </div>
 
           <div className="nav-section">
-            <div className="nav-section-label">Google Rankings</div>
+            <div className="nav-section-label">Site</div>
             <NavLink to="/page-index" className="nav-link">
               <span className="nav-icon">
                 <BsHandIndexThumb />
@@ -104,11 +64,33 @@ const Layout = () => {
               </span>
               Top Pages
             </NavLink>
+            <NavLink to="/audience" className="nav-link">
+              <span className="nav-icon">
+                <MdGroups />
+              </span>
+              Audience
+            </NavLink>
+          </div>
+
+          <div className="nav-section">
+            <div className="nav-section-label">Sources</div>
             <NavLink to="/page-rankings" className="nav-link">
               <span className="nav-icon">
                 <MdAbc />
               </span>
-              Queries
+              Google
+            </NavLink>
+            <NavLink to="/llm" className="nav-link">
+              <span className="nav-icon">
+                <PiComputerTowerBold />
+              </span>
+              LLM
+            </NavLink>
+            <NavLink to="/socials" className="nav-link">
+              <span className="nav-icon">
+                <FaShareAlt />
+              </span>
+              Socials
             </NavLink>
           </div>
         </nav>

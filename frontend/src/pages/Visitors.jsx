@@ -1,23 +1,48 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import apiClient from "../api/axios";
 import VisitorDetailsPanel from "../components/VisitorDetailsPanel";
 import { detectDeviceModel } from "../utils/deviceDetection";
+import { IoIosArrowUp } from "react-icons/io";
 import "./Visitors.css";
 
 const Visitors = () => {
   const [visitors, setVisitors] = useState([]);
   const [dailyTrends, setDailyTrends] = useState([]);
+  const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedVisitor, setSelectedVisitor] = useState(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [dateRange, setDateRange] = useState("7daysAgo");
   const [hoveredBar, setHoveredBar] = useState(null);
+  const [isPeriodDropdownOpen, setIsPeriodDropdownOpen] = useState(false);
+  const periodDropdownRef = useRef(null);
 
   useEffect(() => {
     fetchVisitors();
     fetchDailyTrends();
+    fetchMetrics();
   }, [dateRange]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        isPeriodDropdownOpen &&
+        periodDropdownRef.current &&
+        !periodDropdownRef.current.contains(event.target)
+      ) {
+        setIsPeriodDropdownOpen(false);
+      }
+    };
+
+    if (isPeriodDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isPeriodDropdownOpen]);
 
   const fetchVisitors = async () => {
     setLoading(true);
@@ -60,6 +85,23 @@ const Visitors = () => {
     }
   };
 
+  const fetchMetrics = async () => {
+    try {
+      const params = {
+        startDate: dateRange,
+        endDate: "today",
+      };
+
+      const response = await apiClient.get("/api/analytics/sessions", { params });
+
+      if (response.data.success) {
+        setMetrics(response.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching metrics:", error);
+    }
+  };
+
 
   const handleRowClick = async (visitor) => {
     try {
@@ -77,9 +119,22 @@ const Visitors = () => {
 
       console.log("Visitor details response:", response.data);
       if (response.data.success) {
-        setSelectedVisitor(response.data.data);
+        const visitorDetails = response.data.data;
+        setSelectedVisitor(visitorDetails);
         setIsPanelOpen(true);
-        console.log("Panel should be open, isPanelOpen:", true, "selectedVisitor:", response.data.data);
+        
+        // Update the visitor in the list with the actual landing page if it was empty
+        if (visitorDetails.actualLandingPage && !visitor.landingPage) {
+          setVisitors(prevVisitors => 
+            prevVisitors.map(v => 
+              v.id === visitor.id 
+                ? { ...v, landingPage: visitorDetails.actualLandingPage }
+                : v
+            )
+          );
+        }
+        
+        console.log("Panel should be open, isPanelOpen:", true, "selectedVisitor:", visitorDetails);
       } else {
         console.error("Response not successful:", response.data);
       }
@@ -196,10 +251,10 @@ const Visitors = () => {
   };
 
   const formatDuration = (seconds) => {
-    if (!seconds) return "0s";
+    if (!seconds && seconds !== 0) return "N/A";
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return minutes > 0 ? `${minutes}m ${secs}s` : `${secs}s`;
+    return `${minutes}:${String(secs).padStart(2, "0")}`;
   };
 
   const formatDate = (dateStr) => {
@@ -236,9 +291,6 @@ const Visitors = () => {
   if (error && visitors.length === 0) {
     return (
       <div className="visitors-page">
-        <div className="page-header">
-          <h1>Visitors</h1>
-        </div>
         <div className="card">
           <div className="error-message">
             <h3>⚠️ Error Loading Visitors</h3>
@@ -251,39 +303,109 @@ const Visitors = () => {
 
   return (
     <div className="visitors-page">
-      <div className="page-header">
-        <div>
-          <h1>Visitors</h1>
-          <p>View and analyze visitor data from Google Analytics</p>
+      <div className="visitors-header-controls">
+        <div className="period-control-group">
+          <label>Period:</label>
+          <div className="custom-dropdown" ref={periodDropdownRef}>
+            <div
+              className="custom-dropdown-trigger"
+              onClick={() => setIsPeriodDropdownOpen(!isPeriodDropdownOpen)}
+            >
+              <span>
+                {dateRange === "7daysAgo"
+                  ? "7D"
+                  : dateRange === "30daysAgo"
+                  ? "30D"
+                  : dateRange === "90daysAgo"
+                  ? "90D"
+                  : "365D"}
+              </span>
+              <IoIosArrowUp
+                className={`dropdown-arrow ${
+                  isPeriodDropdownOpen ? "arrow-open" : "arrow-closed"
+                }`}
+              />
+            </div>
+            {isPeriodDropdownOpen && (
+              <div className="custom-dropdown-menu">
+                <div
+                  className={`custom-dropdown-item ${
+                    dateRange === "7daysAgo" ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setDateRange("7daysAgo");
+                    setIsPeriodDropdownOpen(false);
+                  }}
+                >
+                  <span>7D</span>
+                </div>
+                <div
+                  className={`custom-dropdown-item ${
+                    dateRange === "30daysAgo" ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setDateRange("30daysAgo");
+                    setIsPeriodDropdownOpen(false);
+                  }}
+                >
+                  <span>30D</span>
+                </div>
+                <div
+                  className={`custom-dropdown-item ${
+                    dateRange === "90daysAgo" ? "selected" : ""
+                  }`}
+                  onClick={() => {
+                    setDateRange("90daysAgo");
+                    setIsPeriodDropdownOpen(false);
+                  }}
+                >
+                  <span>90D</span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="date-range-selector">
-          <label htmlFor="date-range">Period:</label>
-          <select
-            id="date-range"
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="date-range-select"
-          >
-            <option value="7daysAgo">Last 7 Days</option>
-            <option value="30daysAgo">Last 30 Days</option>
-            <option value="90daysAgo">Last 90 Days</option>
-            <option value="365daysAgo">Last Year</option>
-          </select>
-        </div>
+        
+        {metrics && (
+          <div className="visitors-metrics">
+            {dailyTrends.length > 0 && (
+              <div className="visitor-metric-card">
+                <div className="visitor-metric-label">Today</div>
+                <div className="visitor-metric-value">
+                  {formatNumber(dailyTrends[dailyTrends.length - 1]?.total || 0)}
+                </div>
+              </div>
+            )}
+            <div className="visitor-metric-card">
+              <div className="visitor-metric-label">Total Unique Visitors</div>
+              <div className="visitor-metric-value">
+                {formatNumber(metrics.activeUsers)}
+              </div>
+            </div>
+            <div className="visitor-metric-card">
+              <div className="visitor-metric-label">Engagement Rate</div>
+              <div className="visitor-metric-value">
+                {metrics.engagementRate ? metrics.engagementRate.toFixed(1) : "N/A"}%
+              </div>
+            </div>
+            <div className="visitor-metric-card">
+              <div className="visitor-metric-label">Bounce Rate</div>
+              <div className="visitor-metric-value">
+                {metrics.bounceRate ? metrics.bounceRate.toFixed(1) : "N/A"}%
+              </div>
+            </div>
+            <div className="visitor-metric-card">
+              <div className="visitor-metric-label">Average Duration</div>
+              <div className="visitor-metric-value">
+                {formatDuration(metrics.averageSessionDuration)}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Daily Trends Chart */}
       <div className="card trend-card">
-        <div className="trend-header">
-          <h2>Daily Visitors</h2>
-          {dailyTrends.length > 0 && (
-            <div className="today-box">
-              <span className="today-text">
-                Total: {formatNumber(dailyTrends[dailyTrends.length - 1]?.total || 0)}
-              </span>
-            </div>
-          )}
-        </div>
         <div className="trend-chart">
           {dailyTrends.length > 0 ? (
             <div className="trend-chart-container">
@@ -402,7 +524,7 @@ const Visitors = () => {
               <tr>
                 <th>Date</th>
                 <th>Type</th>
-                <th>Device</th>
+                <th>First Page</th>
                 <th>Location</th>
                 <th>Source</th>
                 <th>Sessions</th>
@@ -427,17 +549,15 @@ const Visitors = () => {
                             : "visitor-type-returning"
                         }`}
                       >
-                        {visitor.newVsReturning === "new" ? "New" : visitor.newVsReturning === "returning" ? "Returning" : "N/A"}
+                        {visitor.newVsReturning === "new" ? "New" : visitor.newVsReturning === "returning" ? "Return" : "N/A"}
                       </span>
                     </td>
                     <td>
-                      <div className="device-info">
-                        {formatDeviceInfo(
-                          visitor.deviceCategory,
-                          visitor.deviceBrand,
-                          visitor.deviceModel,
-                          visitor.operatingSystem,
-                          visitor.browser
+                      <div className="first-page-info">
+                        {visitor.landingPage && visitor.landingPage !== "(not set)" ? (
+                          <span className="first-page-url">{visitor.landingPage}</span>
+                        ) : (
+                          <span className="first-page-url">N/A</span>
                         )}
                       </div>
                     </td>

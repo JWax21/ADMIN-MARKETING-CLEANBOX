@@ -90,11 +90,18 @@ const TechnicalPerformance = () => {
         <>
           <div className="metrics-grid">
             <div className="metric-card">
-              <div className="metric-label">Avg. Page Load Time</div>
+              <div className="metric-label">Avg. Session Duration</div>
               <div className="metric-value">
                 {formatLoadTime(performance.overallAvgLoadTime)}
               </div>
-              <div className="metric-description">Average across all pages</div>
+              <div className="metric-description">
+                Approximated from session duration
+                {performance.note && (
+                  <span style={{ fontSize: "0.75rem", display: "block", marginTop: "0.25rem", color: "#6b7280" }}>
+                    {performance.note}
+                  </span>
+                )}
+              </div>
             </div>
 
             <div className="metric-card">
@@ -133,12 +140,12 @@ const TechnicalPerformance = () => {
               <div className="table-container">
                 <table className="performance-table">
                   <thead>
-                    <tr>
-                      <th>Device</th>
-                      <th>Avg. Load Time</th>
-                      <th>Page Views</th>
-                      <th>Bounce Rate</th>
-                    </tr>
+                      <tr>
+                        <th>Device</th>
+                        <th>Avg. Session Duration</th>
+                        <th>Page Views</th>
+                        <th>Bounce Rate</th>
+                      </tr>
                   </thead>
                   <tbody>
                     {performance.devicePerformance.map((device, index) => (
@@ -161,11 +168,12 @@ const TechnicalPerformance = () => {
               <div className="table-container">
                 <table className="performance-table">
                   <thead>
-                    <tr>
-                      <th>Page</th>
-                      <th>Avg. Load Time</th>
-                      <th>Views</th>
-                    </tr>
+                      <tr>
+                        <th>Page</th>
+                        <th>Avg. Session Duration</th>
+                        <th>Views</th>
+                        <th>Bounce Rate</th>
+                      </tr>
                   </thead>
                   <tbody>
                     {performance.pageLoadTimes.slice(0, 20).map((page, index) => (
@@ -175,6 +183,7 @@ const TechnicalPerformance = () => {
                         </td>
                         <td>{formatLoadTime(page.avgLoadTime)}</td>
                         <td>{page.views?.toLocaleString()}</td>
+                        <td>{page.bounceRate?.toFixed(1)}%</td>
                       </tr>
                     ))}
                   </tbody>

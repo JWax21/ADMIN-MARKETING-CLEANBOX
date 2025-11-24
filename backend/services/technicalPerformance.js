@@ -17,15 +17,18 @@ export const getTechnicalPerformance = async (
   const propertyId = process.env.GA_PROPERTY_ID;
 
   try {
-    // Get Core Web Vitals
+    // Get page performance data
+    // Note: GA4 doesn't have averagePageLoadTime metric
+    // We'll use averageSessionDuration as a proxy for page performance
     const vitalsResponse = await analyticsDataClient.properties.runReport({
       property: `properties/${propertyId}`,
       requestBody: {
         dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: "pagePath" }],
         metrics: [
-          { name: "averagePageLoadTime" },
+          { name: "averageSessionDuration" },
           { name: "screenPageViews" },
+          { name: "bounceRate" },
         ],
         orderBys: [
           {
@@ -42,8 +45,9 @@ export const getTechnicalPerformance = async (
     const pageLoadData =
       vitalsResponse.data.rows?.map((row) => ({
         path: row.dimensionValues[0].value,
-        avgLoadTime: parseFloat(row.metricValues[0].value),
+        avgLoadTime: parseFloat(row.metricValues[0].value), // Using session duration as proxy
         views: parseInt(row.metricValues[1].value),
+        bounceRate: parseFloat(row.metricValues[2].value) * 100,
       })) || [];
 
     // Get 404 errors (pages with low engagement or error events)
@@ -86,7 +90,7 @@ export const getTechnicalPerformance = async (
         dateRanges: [{ startDate, endDate }],
         dimensions: [{ name: "deviceCategory" }],
         metrics: [
-          { name: "averagePageLoadTime" },
+          { name: "averageSessionDuration" },
           { name: "screenPageViews" },
           { name: "bounceRate" },
         ],
@@ -96,7 +100,7 @@ export const getTechnicalPerformance = async (
     const devicePerformance =
       deviceResponse.data.rows?.map((row) => ({
         device: row.dimensionValues[0].value,
-        avgLoadTime: parseFloat(row.metricValues[0].value),
+        avgLoadTime: parseFloat(row.metricValues[0].value), // Using session duration as proxy
         views: parseInt(row.metricValues[1].value),
         bounceRate: parseFloat(row.metricValues[2].value) * 100,
       })) || [];
@@ -116,6 +120,7 @@ export const getTechnicalPerformance = async (
       errorPages,
       devicePerformance,
       total404Errors: errorPages.reduce((sum, p) => sum + p.views, 0),
+      note: "Page load time is approximated using average session duration. For accurate load times, implement Core Web Vitals tracking.",
     };
   } catch (error) {
     console.error("Error fetching technical performance:", error);

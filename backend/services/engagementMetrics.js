@@ -28,6 +28,7 @@ export const getEngagementMetrics = async (
           { name: "screenPageViews" },
           { name: "sessions" },
           { name: "eventCount" },
+          { name: "pagesPerSession" },
         ],
       },
     });
@@ -41,6 +42,7 @@ export const getEngagementMetrics = async (
     const pageViews = parseInt(overallRow.metricValues[2].value);
     const bounceRate = parseFloat(overallRow.metricValues[0].value) * 100;
     const avgSessionDuration = parseFloat(overallRow.metricValues[1].value);
+    const pagesPerSession = parseFloat(overallRow.metricValues[5].value);
 
     // Get scroll depth events
     const scrollResponse = await analyticsDataClient.properties.runReport({
@@ -119,7 +121,7 @@ export const getEngagementMetrics = async (
     return {
       bounceRate,
       averageSessionDuration: avgSessionDuration,
-      pagesPerSession: sessions > 0 ? (pageViews / sessions).toFixed(2) : 0,
+      pagesPerSession: pagesPerSession || (sessions > 0 ? (pageViews / sessions).toFixed(2) : 0),
       scrollDepth: scrollDepthData,
       ctaClicks,
       totalSessions: sessions,

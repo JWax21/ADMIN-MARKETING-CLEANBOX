@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import apiClient from "../api/axios";
 import { IoIosCheckmarkCircle, IoIosArrowUp } from "react-icons/io";
+import { GoArrowSwitch } from "react-icons/go";
 import "./PageIndex.css";
 
 const PageIndex = () => {
@@ -10,11 +11,12 @@ const PageIndex = () => {
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [indexedFilter, setIndexedFilter] = useState("all");
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState({
-    key: "position",
-    direction: "asc",
+    key: "uniqueVisitors",
+    direction: "desc",
   });
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const sortDropdownRef = useRef(null);
 
   useEffect(() => {
     fetchPages();
@@ -22,19 +24,23 @@ const PageIndex = () => {
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (isDropdownOpen && !event.target.closest(".custom-dropdown")) {
-        setIsDropdownOpen(false);
+      if (
+        isSortDropdownOpen &&
+        sortDropdownRef.current &&
+        !sortDropdownRef.current.contains(event.target)
+      ) {
+        setIsSortDropdownOpen(false);
       }
     };
 
-    if (isDropdownOpen) {
+    if (isSortDropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isDropdownOpen]);
+  }, [isSortDropdownOpen]);
 
   const fetchPages = async () => {
     setLoading(true);
@@ -77,28 +83,44 @@ const PageIndex = () => {
     if (!seconds) return "N/A";
     const minutes = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return minutes > 0 ? `${minutes}m ${secs}s` : `${secs}s`;
+    return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(
+      2,
+      "0"
+    )}`;
   };
 
-  const formatUrl = (url) => {
+  const formatUrl = (url, category) => {
     if (!url) return "N/A";
     // Extract path after .com
     const match = url.match(/\.com(.*)/);
-    if (match && match[1]) {
-      return match[1] || "/";
+    let path = match && match[1] ? match[1] : "/";
+
+    // Category-specific URL shortening
+    if (category === "rankings") {
+      path = path.replace(/^\/articles\/rankings\//, "");
+    } else if (category === "ingredient-checker") {
+      path = path.replace(/^\/ingredient-checker/, "");
+    } else if (category === "reviews") {
+      path = path.replace(/^\/articles\/bars\/reviews\//, "");
     }
-    return url;
+
+    return path || "/";
+  };
+
+  const formatBounceRate = (rate) => {
+    if (!rate && rate !== 0) return "N/A";
+    return `${rate.toFixed(1)}%`;
   };
 
   const categories = [
     "all",
+    "landing",
+    "reviews",
+    "rankings",
     "tool",
     "ingredient-checker",
     "about",
-    "reviews",
-    "rankings",
     "directory",
-    "landing",
     "other",
   ];
 
@@ -114,19 +136,57 @@ const PageIndex = () => {
 
   // Sort filtered pages
   const sortedPages = [...filteredPages].sort((a, b) => {
-    if (sortConfig.key === "position") {
-      const aVal = a.position || 0;
-      const bVal = b.position || 0;
+    let aVal, bVal;
 
-      // Treat 0 as lowest priority (sort to bottom for ASC, top for DESC)
-      if (aVal === 0 && bVal === 0) return 0;
-      if (aVal === 0) return 1; // a goes to bottom
-      if (bVal === 0) return -1; // b goes to bottom
-
-      return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
+    switch (sortConfig.key) {
+      case "position":
+        aVal = a.position || 0;
+        bVal = b.position || 0;
+        // Treat 0 as lowest priority (sort to bottom for ASC, top for DESC)
+        if (aVal === 0 && bVal === 0) return 0;
+        if (aVal === 0) return 1;
+        if (bVal === 0) return -1;
+        break;
+      case "uniqueVisitors":
+        aVal = a.uniqueVisitors || 0;
+        bVal = b.uniqueVisitors || 0;
+        break;
+      case "bounceRate":
+        aVal = a.bounceRate || 0;
+        bVal = b.bounceRate || 0;
+        break;
+      case "impressions":
+        aVal = a.impressions || 0;
+        bVal = b.impressions || 0;
+        break;
+      case "clicks":
+        aVal = a.clicks || 0;
+        bVal = b.clicks || 0;
+        break;
+      case "ctr":
+        aVal = a.ctr || 0;
+        bVal = b.ctr || 0;
+        break;
+      case "avgDuration":
+        aVal = a.avgDuration || 0;
+        bVal = b.avgDuration || 0;
+        break;
+      default:
+        return 0;
     }
-    return 0;
+
+    return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
   });
+
+  const sortOptions = [
+    { key: "uniqueVisitors", label: "All-time" },
+    { key: "bounceRate", label: "Bounce" },
+    { key: "position", label: "AVG" },
+    { key: "impressions", label: "Imp" },
+    { key: "clicks", label: "Clicks" },
+    { key: "ctr", label: "CTR" },
+    { key: "avgDuration", label: "Avg" },
+  ];
 
   // Filter pages by selected category for stats calculation
   const categoryFilteredPages =
@@ -171,6 +231,46 @@ const PageIndex = () => {
         ).toFixed(1)
       : "N/A";
 
+  // Calculate engagement metrics for the selected category
+  const totalUniqueVisitors = categoryFilteredPages.reduce(
+    (sum, p) => sum + (p.uniqueVisitors || 0),
+    0
+  );
+
+  // Calculate weighted average bounce rate (only pages with sessions > 0)
+  const pagesWithSessions = categoryFilteredPages.filter(
+    (p) => p.sessions > 0 && p.uniqueVisitors >= 1
+  );
+  const totalSessions = pagesWithSessions.reduce(
+    (sum, p) => sum + (p.sessions || 0),
+    0
+  );
+  const weightedBounceRate =
+    totalSessions > 0
+      ? pagesWithSessions.reduce(
+          (sum, p) => sum + ((p.bounceRate || 0) / 100) * (p.sessions || 0),
+          0
+        ) / totalSessions
+      : 0;
+  categoryStats.engagementRate = ((1 - weightedBounceRate) * 100).toFixed(1);
+
+  // Calculate average duration (weighted by sessions or page views)
+  const pagesWithDuration = categoryFilteredPages.filter(
+    (p) => p.avgDuration && p.avgDuration > 0
+  );
+  const totalDurationWeight = pagesWithDuration.reduce(
+    (sum, p) => sum + (p.sessions || p.uniqueVisitors || 1),
+    0
+  );
+  categoryStats.avgDuration =
+    totalDurationWeight > 0
+      ? pagesWithDuration.reduce(
+          (sum, p) =>
+            sum + (p.avgDuration || 0) * (p.sessions || p.uniqueVisitors || 1),
+          0
+        ) / totalDurationWeight
+      : 0;
+
   const indexedCount = pages.filter((p) => p.indexed).length;
   const notIndexedCount = pages.filter((p) => !p.indexed).length;
 
@@ -196,108 +296,126 @@ const PageIndex = () => {
 
   return (
     <div className="page-index-page">
-      <div className="filters-section">
-        <div className="filter-card-wrapper">
-          <label className="filter-label">Category</label>
-          <div className="custom-dropdown">
-            <div
-              className="custom-dropdown-trigger"
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+      <div className="page-index-tabs-container">
+        <div className="page-index-tabs-title">PAGES</div>
+        <div className="category-tabs">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              className={`category-tab ${
+                selectedCategory === cat ? "active" : ""
+              }`}
+              onClick={() => setSelectedCategory(cat)}
             >
-              <span>
-                {selectedCategory.charAt(0).toUpperCase() +
-                  selectedCategory.slice(1)}
-              </span>
-              <span className="dropdown-count">
-                {formatNumber(categoryCounts[selectedCategory])}
-              </span>
-              <IoIosArrowUp
-                className={`dropdown-arrow ${
-                  isDropdownOpen ? "arrow-open" : "arrow-closed"
-                }`}
-              />
-            </div>
-            {isDropdownOpen && (
-              <div className="custom-dropdown-menu">
-                {categories.map((cat) => (
-                  <div
-                    key={cat}
-                    className={`custom-dropdown-item ${
-                      selectedCategory === cat ? "selected" : ""
-                    }`}
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setIsDropdownOpen(false);
-                    }}
-                  >
-                    <span>{cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
-                    <span className="dropdown-count">
-                      {formatNumber(categoryCounts[cat])}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+              {(cat.charAt(0).toUpperCase() + cat.slice(1)).substring(0, 10)}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {stats && (
-          <div className="index-stats-inline">
-            <div className="stat-box">
-              <div className="stat-label">
-                Total Pages{" "}
-                {selectedCategory !== "all"
-                  ? `(${selectedCategory})`
-                  : "(Sitemap)"}
+      <div className="page-index-stats-container">
+        <div className="page-index-stats-title">Stats</div>
+        <div className="filters-section">
+          <div className="sort-controls-left" ref={sortDropdownRef}>
+            <div className="sort-controls-row">
+              <div className="sort-dropdown-wrapper">
+                <div className="custom-dropdown">
+                  <div
+                    className="custom-dropdown-trigger"
+                    onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                  >
+                    <span>
+                      {sortOptions.find((opt) => opt.key === sortConfig.key)
+                        ?.label || "All-time"}
+                    </span>
+                    <IoIosArrowUp
+                      className={`dropdown-arrow ${
+                        isSortDropdownOpen ? "arrow-open" : "arrow-closed"
+                      }`}
+                    />
+                  </div>
+                  {isSortDropdownOpen && (
+                    <div className="custom-dropdown-menu">
+                      {sortOptions.map((option) => (
+                        <div
+                          key={option.key}
+                          className={`custom-dropdown-item ${
+                            sortConfig.key === option.key ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setSortConfig((prev) => ({
+                              key: option.key,
+                              direction:
+                                prev.key === option.key &&
+                                prev.direction === "asc"
+                                  ? "desc"
+                                  : "asc",
+                            }));
+                            setIsSortDropdownOpen(false);
+                          }}
+                        >
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="stat-value">
-                {formatNumber(categoryStats.totalPages)}
-              </div>
-            </div>
-            {selectedCategory !== "all" && (
-              <div className="stat-box">
-                <div className="stat-label">Avg Position</div>
-                <div className="stat-value">{categoryStats.avgPosition}</div>
-              </div>
-            )}
-            <div
-              className={`stat-box clickable ${
-                indexedFilter === "indexed" ? "active" : ""
-              }`}
-              onClick={() =>
-                setIndexedFilter(
-                  indexedFilter === "indexed" ? "all" : "indexed"
-                )
-              }
-            >
-              <div className="stat-label">Indexed</div>
-              <div className="stat-value indexed">
-                {formatNumber(categoryStats.indexedCount)}
-              </div>
-            </div>
-            <div
-              className={`stat-box clickable ${
-                indexedFilter === "not-indexed" ? "active" : ""
-              }`}
-              onClick={() =>
-                setIndexedFilter(
-                  indexedFilter === "not-indexed" ? "all" : "not-indexed"
-                )
-              }
-            >
-              <div className="stat-label">Not Indexed</div>
-              <div className="stat-value not-indexed">
-                {formatNumber(categoryStats.notIndexedCount)}
-              </div>
-            </div>
-            <div className="stat-box">
-              <div className="stat-label">Not Indexed %</div>
-              <div className="stat-value not-indexed-percent">
-                {categoryStats.notIndexedPercent}%
-              </div>
+              <button
+                className="sort-direction-button"
+                onClick={() => {
+                  setSortConfig((prev) => ({
+                    ...prev,
+                    direction: prev.direction === "asc" ? "desc" : "asc",
+                  }));
+                }}
+              >
+                <GoArrowSwitch
+                  className={`sort-arrow ${
+                    sortConfig.direction === "desc" ? "rotated" : ""
+                  }`}
+                />
+              </button>
             </div>
           </div>
-        )}
+
+          {stats && (
+            <div className="index-stats-inline">
+              <div className="stat-box">
+                <div className="stat-label">Unique</div>
+                <div className="stat-value">
+                  {formatNumber(totalUniqueVisitors)}
+                </div>
+              </div>
+              <div className="stat-box">
+                <div className="stat-label">Engagement</div>
+                <div className="stat-value">
+                  {categoryStats.engagementRate || "0.0"}%
+                </div>
+              </div>
+              <div className="stat-box">
+                <div className="stat-label">Duration</div>
+                <div className="stat-value">
+                  {categoryStats.avgDuration
+                    ? formatDuration(categoryStats.avgDuration)
+                    : "N/A"}
+                </div>
+              </div>
+              <div className="stat-box">
+                <div className="stat-label">Index</div>
+                <div className="stat-value index-status-value">
+                  {formatNumber(categoryStats.indexedCount)} /{" "}
+                  {formatNumber(categoryStats.totalPages)} (
+                  {(
+                    (categoryStats.indexedCount / categoryStats.totalPages) *
+                    100
+                  ).toFixed(1)}
+                  %)
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="card">
@@ -305,31 +423,32 @@ const PageIndex = () => {
           <table className="pages-table">
             <thead>
               <tr>
-                <th>Index</th>
-                <th>AVG</th>
-                <th>URL</th>
+                <th className="center-cell">Index</th>
+                <th className="center-cell narrow-column">AVG</th>
                 <th>Category</th>
-                <th>Impressions</th>
-                <th>Clicks</th>
-                <th>CTR</th>
-                <th>Avg Duration</th>
+                <th>URL</th>
+                <th className="center-cell narrow-column">All-time</th>
+                <th className="center-cell narrow-column">Bounce</th>
+                <th className="center-cell narrow-column">Imp</th>
+                <th className="center-cell narrow-column">Clicks</th>
+                <th className="center-cell narrow-column">CTR</th>
+                <th className="center-cell narrow-column">Avg</th>
               </tr>
             </thead>
             <tbody>
               {sortedPages.length > 0 ? (
                 sortedPages.map((page, index) => (
                   <tr key={index}>
-                    <td className="index-cell">
+                    <td className="index-cell center-cell">
                       <IoIosCheckmarkCircle
                         className={`index-icon ${
                           page.indexed ? "indexed" : "not-indexed"
                         }`}
                       />
                     </td>
-                    <td className="number-cell center-cell">
+                    <td className="number-cell center-cell narrow-column">
                       {formatPosition(page.position)}
                     </td>
-                    <td className="url-cell">{formatUrl(page.url)}</td>
                     <td>
                       <span
                         className={`category-badge category-${page.category}`}
@@ -337,16 +456,25 @@ const PageIndex = () => {
                         {page.category}
                       </span>
                     </td>
-                    <td className="number-cell center-cell">
+                    <td className="url-cell">
+                      {formatUrl(page.url, page.category)}
+                    </td>
+                    <td className="number-cell center-cell narrow-column">
+                      {formatNumber(page.uniqueVisitors || 0)}
+                    </td>
+                    <td className="number-cell center-cell narrow-column">
+                      {formatBounceRate(page.bounceRate || 0)}
+                    </td>
+                    <td className="number-cell center-cell narrow-column">
                       {formatNumber(page.impressions)}
                     </td>
-                    <td className="number-cell center-cell">
+                    <td className="number-cell center-cell narrow-column">
                       {formatNumber(page.clicks)}
                     </td>
-                    <td className="number-cell center-cell">
+                    <td className="number-cell center-cell narrow-column">
                       {formatCTR(page.ctr)}
                     </td>
-                    <td className="number-cell center-cell">
+                    <td className="number-cell center-cell narrow-column">
                       {page.avgDuration
                         ? formatDuration(page.avgDuration)
                         : "N/A"}
@@ -355,7 +483,7 @@ const PageIndex = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="no-data">
+                  <td colSpan="10" className="no-data">
                     No pages found
                   </td>
                 </tr>

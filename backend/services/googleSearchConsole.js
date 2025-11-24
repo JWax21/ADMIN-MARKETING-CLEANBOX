@@ -21,18 +21,24 @@ export const initializeSearchConsole = () => {
     const GA_KEY_FILE = process.env.GA_KEY_FILE_PATH;
 
     if (!SITE_URL) {
-      console.warn("⚠️  SEARCH_CONSOLE_SITE_URL not set in environment variables");
+      console.warn(
+        "⚠️  SEARCH_CONSOLE_SITE_URL not set in environment variables"
+      );
       return null;
     }
 
     // Get credentials from either base64 env var (production) or file (local dev)
     // Reuse the same credentials as Google Analytics
     let credentials;
-    
+
     if (GA_SERVICE_ACCOUNT_BASE64) {
       // Production: decode base64 environment variable
-      console.log("📦 Loading Search Console credentials from base64 environment variable");
-      const decoded = Buffer.from(GA_SERVICE_ACCOUNT_BASE64, "base64").toString("utf8");
+      console.log(
+        "📦 Loading Search Console credentials from base64 environment variable"
+      );
+      const decoded = Buffer.from(GA_SERVICE_ACCOUNT_BASE64, "base64").toString(
+        "utf8"
+      );
       credentials = JSON.parse(decoded);
     } else if (GA_KEY_FILE) {
       // Local development: read from file
@@ -40,7 +46,9 @@ export const initializeSearchConsole = () => {
       const keyFilePath = join(__dirname, "..", GA_KEY_FILE);
       credentials = JSON.parse(readFileSync(keyFilePath, "utf8"));
     } else {
-      console.warn("⚠️  Neither GA_SERVICE_ACCOUNT_BASE64 nor GA_KEY_FILE_PATH set in environment variables");
+      console.warn(
+        "⚠️  Neither GA_SERVICE_ACCOUNT_BASE64 nor GA_KEY_FILE_PATH set in environment variables"
+      );
       return null;
     }
 
@@ -58,7 +66,10 @@ export const initializeSearchConsole = () => {
     console.log("✅ Google Search Console API initialized successfully");
     return searchConsoleClient;
   } catch (error) {
-    console.error("❌ Error initializing Google Search Console:", error.message);
+    console.error(
+      "❌ Error initializing Google Search Console:",
+      error.message
+    );
     return null;
   }
 };
@@ -80,10 +91,11 @@ export const getSearchPerformance = async (
 
   try {
     // Convert date format from "30daysAgo" to actual date
-    const endDateFormatted = endDate === "today" 
-      ? new Date().toISOString().split("T")[0]
-      : formatDate(endDate);
-    
+    const endDateFormatted =
+      endDate === "today"
+        ? new Date().toISOString().split("T")[0]
+        : formatDate(endDate);
+
     const startDateFormatted = formatDate(startDate);
 
     const response = await searchConsoleClient.searchanalytics.query({
@@ -97,16 +109,22 @@ export const getSearchPerformance = async (
     });
 
     const rows = response.data.rows || [];
-    
+
     return {
       totalClicks: rows.reduce((sum, row) => sum + (row.clicks || 0), 0),
-      totalImpressions: rows.reduce((sum, row) => sum + (row.impressions || 0), 0),
-      averageCTR: rows.length > 0
-        ? rows.reduce((sum, row) => sum + (row.ctr || 0), 0) / rows.length
-        : 0,
-      averagePosition: rows.length > 0
-        ? rows.reduce((sum, row) => sum + (row.position || 0), 0) / rows.length
-        : 0,
+      totalImpressions: rows.reduce(
+        (sum, row) => sum + (row.impressions || 0),
+        0
+      ),
+      averageCTR:
+        rows.length > 0
+          ? rows.reduce((sum, row) => sum + (row.ctr || 0), 0) / rows.length
+          : 0,
+      averagePosition:
+        rows.length > 0
+          ? rows.reduce((sum, row) => sum + (row.position || 0), 0) /
+            rows.length
+          : 0,
       dailyData: rows.map((row) => ({
         date: row.keys[0],
         clicks: row.clicks || 0,
@@ -139,10 +157,11 @@ export const getTopQueries = async (
   const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL;
 
   try {
-    const endDateFormatted = endDate === "today" 
-      ? new Date().toISOString().split("T")[0]
-      : formatDate(endDate);
-    
+    const endDateFormatted =
+      endDate === "today"
+        ? new Date().toISOString().split("T")[0]
+        : formatDate(endDate);
+
     const startDateFormatted = formatDate(startDate);
 
     const response = await searchConsoleClient.searchanalytics.query({
@@ -194,10 +213,11 @@ export const getTopPages = async (
   const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL;
 
   try {
-    const endDateFormatted = endDate === "today" 
-      ? new Date().toISOString().split("T")[0]
-      : formatDate(endDate);
-    
+    const endDateFormatted =
+      endDate === "today"
+        ? new Date().toISOString().split("T")[0]
+        : formatDate(endDate);
+
     const startDateFormatted = formatDate(startDate);
 
     const response = await searchConsoleClient.searchanalytics.query({
@@ -236,17 +256,19 @@ export const getTopPages = async (
  * @param {string} sitemapUrl - URL of the sitemap
  * @returns {Array<string>} Array of URLs from sitemap
  */
-const fetchSitemap = async (sitemapUrl = "https://www.proteinbarnerd.com/sitemap.xml") => {
+const fetchSitemap = async (
+  sitemapUrl = "https://www.proteinbarnerd.com/sitemap.xml"
+) => {
   try {
     const response = await axios.get(sitemapUrl);
     const xmlText = response.data;
-    
+
     // Parse XML to extract URLs
     const urlMatches = xmlText.match(/<loc>(.*?)<\/loc>/g) || [];
-    const urls = urlMatches.map(match => {
-      return match.replace(/<\/?loc>/g, '').trim();
+    const urls = urlMatches.map((match) => {
+      return match.replace(/<\/?loc>/g, "").trim();
     });
-    
+
     return urls;
   } catch (error) {
     console.error("Error fetching sitemap:", error);
@@ -268,14 +290,17 @@ export const getPageIndexStatus = async (limit = 1000) => {
   try {
     // Fetch sitemap URLs
     const sitemapUrls = await fetchSitemap();
-    const sitemapUrlSet = new Set(sitemapUrls.map(url => {
-      // Normalize URLs - remove protocol and www
-      return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
-    }));
+    const sitemapUrlSet = new Set(
+      sitemapUrls.map((url) => {
+        // Normalize URLs - remove protocol and www
+        return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+      })
+    );
 
     // Get all pages from search analytics (pages that have appeared in search)
     const endDate = new Date().toISOString().split("T")[0];
-    const startDate = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+    // Use a long date range (2 years) to capture most historical data
+    const startDate = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split("T")[0];
 
@@ -289,50 +314,73 @@ export const getPageIndexStatus = async (limit = 1000) => {
       },
     });
 
-    // Fetch average duration from Google Analytics for all pages
+    // Fetch average duration, unique visitors, and bounce rate from Google Analytics for all pages
     let avgDurationMap = {};
+    let pageVisitorsMap = {};
     try {
-      const { getPageAvgDurations } = await import('./googleAnalytics.js');
-      avgDurationMap = await getPageAvgDurations(startDate, endDate) || {};
+      const { getPageAvgDurations, getPageVisitorsAndBounceRate } =
+        await import("./googleAnalytics.js");
+      avgDurationMap = (await getPageAvgDurations(startDate, endDate)) || {};
+      pageVisitorsMap =
+        (await getPageVisitorsAndBounceRate(startDate, endDate)) || {};
     } catch (gaError) {
-      console.warn("Could not fetch average duration from GA:", gaError.message);
-      // Continue without average duration data
+      console.warn("Could not fetch page data from GA:", gaError.message);
+      // Continue without GA data
     }
 
     // Create a set of indexed URLs (normalized)
     const indexedUrlSet = new Set();
-    const indexedPages = response.data.rows?.map((row) => {
-      const pageUrl = row.keys[0];
-      const normalizedUrl = pageUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
-      indexedUrlSet.add(normalizedUrl);
-      
-      // Extract page path from full URL for matching with GA data
-      const pagePath = pageUrl.replace(/^https?:\/\/(www\.)?[^\/]+/, '') || '/';
-      const avgDuration = avgDurationMap[pagePath] || null;
-      
-      return {
-        url: pageUrl,
-        indexed: true, // If it appears in search analytics, it's indexed
-        clicks: row.clicks || 0,
-        impressions: row.impressions || 0,
-        ctr: row.ctr || 0,
-        position: row.position || 0,
-        category: categorizePage(pageUrl),
-        avgDuration: avgDuration,
-      };
-    }) || [];
+    const indexedPages =
+      response.data.rows?.map((row) => {
+        const pageUrl = row.keys[0];
+        const normalizedUrl = pageUrl
+          .replace(/^https?:\/\/(www\.)?/, "")
+          .replace(/\/$/, "");
+        indexedUrlSet.add(normalizedUrl);
+
+        // Extract page path from full URL for matching with GA data
+        const pagePath =
+          pageUrl.replace(/^https?:\/\/(www\.)?[^\/]+/, "") || "/";
+        const avgDuration = avgDurationMap[pagePath] || null;
+        const pageData = pageVisitorsMap[pagePath] || {
+          uniqueVisitors: 0,
+          bounceRate: 0,
+          sessions: 0,
+        };
+
+        return {
+          url: pageUrl,
+          indexed: true, // If it appears in search analytics, it's indexed
+          clicks: row.clicks || 0,
+          impressions: row.impressions || 0,
+          ctr: row.ctr || 0,
+          position: row.position || 0,
+          category: categorizePage(pageUrl),
+          avgDuration: avgDuration,
+          uniqueVisitors: pageData.uniqueVisitors || 0,
+          bounceRate: pageData.bounceRate || 0,
+          sessions: pageData.sessions || 0,
+        };
+      }) || [];
 
     // Find pages in sitemap that are not indexed
     const notIndexedPages = sitemapUrls
-      .filter(url => {
-        const normalizedUrl = url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+      .filter((url) => {
+        const normalizedUrl = url
+          .replace(/^https?:\/\/(www\.)?/, "")
+          .replace(/\/$/, "");
         return !indexedUrlSet.has(normalizedUrl);
       })
-      .map(url => {
+      .map((url) => {
         // Extract page path from full URL for matching with GA data
-        const pagePath = url.replace(/^https?:\/\/(www\.)?[^\/]+/, '') || '/';
+        const pagePath = url.replace(/^https?:\/\/(www\.)?[^\/]+/, "") || "/";
         const avgDuration = avgDurationMap[pagePath] || null;
-        
+        const pageData = pageVisitorsMap[pagePath] || {
+          uniqueVisitors: 0,
+          bounceRate: 0,
+          sessions: 0,
+        };
+
         return {
           url: url,
           indexed: false,
@@ -342,6 +390,9 @@ export const getPageIndexStatus = async (limit = 1000) => {
           position: 0,
           category: categorizePage(url),
           avgDuration: avgDuration,
+          uniqueVisitors: pageData.uniqueVisitors || 0,
+          bounceRate: pageData.bounceRate || 0,
+          sessions: pageData.sessions || 0,
         };
       });
 
@@ -352,7 +403,8 @@ export const getPageIndexStatus = async (limit = 1000) => {
     const totalPages = sitemapUrls.length;
     const indexedCount = indexedPages.length;
     const notIndexedCount = notIndexedPages.length;
-    const notIndexedPercent = totalPages > 0 ? (notIndexedCount / totalPages) * 100 : 0;
+    const notIndexedPercent =
+      totalPages > 0 ? (notIndexedCount / totalPages) * 100 : 0;
 
     return {
       pages: allPages,
@@ -377,25 +429,37 @@ export const getPageIndexStatus = async (limit = 1000) => {
  */
 const categorizePage = (url) => {
   if (!url) return "other";
-  
+
   const lowerUrl = url.toLowerCase();
-  
+
   // Clean path for analysis (remove leading/trailing slashes)
-  const cleanPath = url.replace(/^https?:\/\/(www\.)?[^\/]+/, "").replace(/^\/+/, "").replace(/\/+$/, "");
-  const pathSegments = cleanPath.split("/").filter(s => s);
+  const cleanPath = url
+    .replace(/^https?:\/\/(www\.)?[^\/]+/, "")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "");
+  const pathSegments = cleanPath.split("/").filter((s) => s);
   const slashCount = pathSegments.length - 1; // Number of slashes (segments - 1)
-  const isRootPage = !cleanPath || cleanPath === "" || url.endsWith("/") || url.match(/^https?:\/\/(www\.)?[^\/]+\/?$/);
+  const isRootPage =
+    !cleanPath ||
+    cleanPath === "" ||
+    url.endsWith("/") ||
+    url.match(/^https?:\/\/(www\.)?[^\/]+\/?$/);
 
   // Determine type based on URL patterns (check in order of specificity)
   if (lowerUrl.includes("/ingredient-checker")) {
     return "ingredient-checker";
-  } else if (lowerUrl.includes("/compare-bars") || lowerUrl.includes("/browse")) {
+  } else if (
+    lowerUrl.includes("/compare-bars") ||
+    lowerUrl.includes("/browse")
+  ) {
     return "tool";
-  } else if (lowerUrl.includes("/partners") || 
-             lowerUrl.includes("/contact") || 
-             lowerUrl.includes("/help-center") ||
-             lowerUrl.includes("/privacy-policy") ||
-             lowerUrl.includes("/terms-of-service")) {
+  } else if (
+    lowerUrl.includes("/partners") ||
+    lowerUrl.includes("/contact") ||
+    lowerUrl.includes("/help-center") ||
+    lowerUrl.includes("/privacy-policy") ||
+    lowerUrl.includes("/terms-of-service")
+  ) {
     return "about";
   } else if (lowerUrl.includes("/reviews")) {
     return "reviews";
@@ -407,7 +471,7 @@ const categorizePage = (url) => {
     // Root page or pages with only 1 segment are Landing pages
     return "landing";
   }
-  
+
   return "other";
 };
 
@@ -429,10 +493,11 @@ export const getPageRankings = async (
   const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL;
 
   try {
-    const endDateFormatted = endDate === "today" 
-      ? new Date().toISOString().split("T")[0]
-      : formatDate(endDate);
-    
+    const endDateFormatted =
+      endDate === "today"
+        ? new Date().toISOString().split("T")[0]
+        : formatDate(endDate);
+
     const startDateFormatted = formatDate(startDate);
 
     const response = await searchConsoleClient.searchanalytics.query({
@@ -468,6 +533,42 @@ export const getPageRankings = async (
 };
 
 /**
+ * Get links data from Search Console
+ * Note: The Search Console API doesn't directly expose the Links report,
+ * but we can try to get link data through other means or use GA4 referrer data
+ * @param {number} limit - Number of results to return
+ */
+export const getLinksData = async (limit = 100) => {
+  if (!searchConsoleClient) {
+    throw new Error("Search Console client not initialized");
+  }
+
+  const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL;
+
+  try {
+    // Note: The Search Console API v1 doesn't have a direct "links" endpoint
+    // The Links report in the UI is not available via API
+    // We'll return a note about this limitation
+    return {
+      externalLinks: {
+        topLinkedPages: [],
+        topLinkingSites: [],
+        topLinkingText: [],
+        note: "External links data is not available through the Search Console API. The Links report in the UI is not exposed via API. Consider using GA4 referrer data or third-party tools (Ahrefs, Moz, SEMrush) for backlink analysis.",
+      },
+      internalLinks: {
+        topLinkedPages: [],
+        note: "Internal links data is not available through the Search Console API.",
+      },
+      apiAvailable: false,
+    };
+  } catch (error) {
+    console.error("Error fetching links data:", error);
+    throw error;
+  }
+};
+
+/**
  * Get top countries from search traffic
  * @param {string} startDate - Start date in YYYY-MM-DD format
  * @param {string} endDate - End date in YYYY-MM-DD format
@@ -485,10 +586,11 @@ export const getTopCountries = async (
   const siteUrl = process.env.SEARCH_CONSOLE_SITE_URL;
 
   try {
-    const endDateFormatted = endDate === "today" 
-      ? new Date().toISOString().split("T")[0]
-      : formatDate(endDate);
-    
+    const endDateFormatted =
+      endDate === "today"
+        ? new Date().toISOString().split("T")[0]
+        : formatDate(endDate);
+
     const startDateFormatted = formatDate(startDate);
 
     const response = await searchConsoleClient.searchanalytics.query({
@@ -530,19 +632,19 @@ function formatDate(dateStr) {
   if (dateStr === "today") {
     return new Date().toISOString().split("T")[0];
   }
-  
+
   if (dateStr.endsWith("daysAgo")) {
     const days = parseInt(dateStr.replace("daysAgo", ""));
     const date = new Date();
     date.setDate(date.getDate() - days);
     return date.toISOString().split("T")[0];
   }
-  
+
   // If it's already in YYYY-MM-DD format, return as is
   if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
     return dateStr;
   }
-  
+
   return dateStr;
 }
 
@@ -554,5 +656,5 @@ export default {
   getTopCountries,
   getPageIndexStatus,
   getPageRankings,
+  getLinksData,
 };
-

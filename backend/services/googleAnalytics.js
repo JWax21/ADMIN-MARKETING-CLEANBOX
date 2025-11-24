@@ -221,7 +221,71 @@ export const getPageAvgDurations = async (
 };
 
 /**
- * Get traffic by source/medium
+ * Get unique visitors and bounce rate per page
+ * Fetches all-time data (uses a long date range to capture historical data)
+ * @param {string} startDate - Start date in YYYY-MM-DD format (defaults to 2 years ago)
+ * @param {string} endDate - End date in YYYY-MM-DD format (defaults to today)
+ * @returns {Object} Map of pagePath -> { uniqueVisitors, bounceRate }
+ */
+export const getPageVisitorsAndBounceRate = async (
+  startDate = null,
+  endDate = "today"
+) => {
+  if (!analyticsDataClient) {
+    throw new Error("Analytics client not initialized");
+  }
+
+  const propertyId = process.env.GA_PROPERTY_ID;
+
+  // If no startDate provided, use 2 years ago to capture most historical data
+  const effectiveStartDate = startDate || (() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 2);
+    return date.toISOString().split("T")[0];
+  })();
+
+  try {
+    const response = await analyticsDataClient.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [
+          {
+            startDate: effectiveStartDate,
+            endDate,
+          },
+        ],
+        dimensions: [{ name: "pagePath" }],
+        metrics: [
+          { name: "activeUsers" }, // Unique visitors
+          { name: "bounceRate" },
+          { name: "sessions" }, // Sessions for weighting
+        ],
+        limit: 10000, // Get as many pages as possible
+      },
+    });
+
+    const pageDataMap = {};
+    response.data.rows?.forEach((row) => {
+      const pagePath = row.dimensionValues[0].value;
+      const uniqueVisitors = parseInt(row.metricValues[0].value) || 0;
+      const bounceRate = parseFloat(row.metricValues[1].value) || 0;
+      const sessions = parseInt(row.metricValues[2].value) || 0;
+      pageDataMap[pagePath] = {
+        uniqueVisitors,
+        bounceRate: bounceRate * 100, // Convert to percentage
+        sessions,
+      };
+    });
+
+    return pageDataMap;
+  } catch (error) {
+    console.error("Error fetching page visitors and bounce rate:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get traffic by source/medium with enhanced attribution
  * @param {string} startDate - Start date in YYYY-MM-DD format
  * @param {string} endDate - End date in YYYY-MM-DD format
  */
@@ -236,7 +300,8 @@ export const getTrafficSources = async (
   const propertyId = process.env.GA_PROPERTY_ID;
 
   try {
-    const response = await analyticsDataClient.properties.runReport({
+    // Get session-level (last-touch) attribution
+    const sessionResponse = await analyticsDataClient.properties.runReport({
       property: `properties/${propertyId}`,
       requestBody: {
         dateRanges: [
@@ -245,7 +310,11 @@ export const getTrafficSources = async (
             endDate,
           },
         ],
-        dimensions: [{ name: "sessionSource" }, { name: "sessionMedium" }],
+        dimensions: [
+          { name: "sessionSource" },
+          { name: "sessionMedium" },
+          { name: "sessionDefaultChannelGroup" },
+        ],
         metrics: [{ name: "sessions" }, { name: "activeUsers" }],
         orderBys: [
           {
@@ -255,18 +324,100 @@ export const getTrafficSources = async (
             desc: true,
           },
         ],
-        limit: 10,
+        limit: 100,
       },
     });
 
-    return (
-      response.data.rows?.map((row) => ({
+    // Get first-touch attribution
+    const firstTouchResponse = await analyticsDataClient.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [
+          {
+            startDate,
+            endDate,
+          },
+        ],
+        dimensions: [
+          { name: "firstUserSource" },
+          { name: "firstUserMedium" },
+        ],
+        metrics: [{ name: "sessions" }, { name: "activeUsers" }, { name: "newUsers" }],
+        orderBys: [
+          {
+            metric: {
+              metricName: "sessions",
+            },
+            desc: true,
+          },
+        ],
+        limit: 100,
+      },
+    });
+
+    // Get landing pages
+    const landingPageResponse = await analyticsDataClient.properties.runReport({
+      property: `properties/${propertyId}`,
+      requestBody: {
+        dateRanges: [
+          {
+            startDate,
+            endDate,
+          },
+        ],
+        dimensions: [{ name: "landingPage" }],
+        metrics: [
+          { name: "sessions" },
+          { name: "activeUsers" },
+          { name: "newUsers" },
+          { name: "bounceRate" },
+        ],
+        orderBys: [
+          {
+            metric: {
+              metricName: "sessions",
+            },
+            desc: true,
+          },
+        ],
+        limit: 50,
+      },
+    });
+
+    const sessionSources =
+      sessionResponse.data.rows?.map((row) => ({
+        source: row.dimensionValues[0].value,
+        medium: row.dimensionValues[1].value,
+        channelGroup: row.dimensionValues[2].value,
+        sessions: parseInt(row.metricValues[0].value),
+        users: parseInt(row.metricValues[1].value),
+        attribution: "last-touch",
+      })) || [];
+
+    const firstTouchSources =
+      firstTouchResponse.data.rows?.map((row) => ({
         source: row.dimensionValues[0].value,
         medium: row.dimensionValues[1].value,
         sessions: parseInt(row.metricValues[0].value),
         users: parseInt(row.metricValues[1].value),
-      })) || []
-    );
+        newUsers: parseInt(row.metricValues[2].value),
+        attribution: "first-touch",
+      })) || [];
+
+    const landingPages =
+      landingPageResponse.data.rows?.map((row) => ({
+        landingPage: row.dimensionValues[0].value,
+        sessions: parseInt(row.metricValues[0].value),
+        users: parseInt(row.metricValues[1].value),
+        newUsers: parseInt(row.metricValues[2].value),
+        bounceRate: parseFloat(row.metricValues[3].value) * 100,
+      })) || [];
+
+    return {
+      sessionSources,
+      firstTouchSources,
+      landingPages,
+    };
   } catch (error) {
     console.error("Error fetching traffic sources:", error);
     throw error;
