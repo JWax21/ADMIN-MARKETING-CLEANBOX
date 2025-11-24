@@ -45,11 +45,26 @@
   justify-content: center;
   height: 3rem;
   font-family: "Montserrat", sans-serif;
+  background-color: #FFBC00;
+  color: #111827;
+  border: none;
+  font-weight: 600;
+}
+
+.login-card form .btn-primary:hover:not(:disabled) {
+  background-color: #e6a800;
+}
+
+.login-card form .btn-primary:active:not(:disabled) {
+  background-color: #cc9600;
 }
 
 .login-card .form-group label {
   font-weight: 400;
   font-family: "Montserrat", sans-serif;
+  text-align: center;
+  display: block;
+  margin-bottom: 1rem;
 }
 
 .login-card .alert {

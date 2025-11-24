@@ -84,11 +84,6 @@ const Login = () => {
   return (
     <div className="login-container">
       <div className="login-card">
-        <div className="login-header">
-          <h1>Enter Access Code</h1>
-          <p>Please enter your 4-digit code</p>
-        </div>
-
         {error && <div className="alert alert-error">{error}</div>}
 
         <form onSubmit={handleLogin}>
