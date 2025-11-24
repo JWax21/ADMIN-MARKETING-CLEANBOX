@@ -21,6 +21,7 @@ import AudienceProfile from "./pages/AudienceProfile";
 import PowerUsers from "./pages/PowerUsers";
 import LLM from "./pages/LLM";
 import Socials from "./pages/Socials";
+import EmailList from "./pages/EmailList";
 import Login from "./pages/Login";
 import apiClient from "./api/axios";
 import "./App.css";
@@ -98,6 +99,7 @@ function App() {
           <Route index element={<Navigate to="/visitors" replace />} />
           <Route path="visitors" element={<Visitors />} />
           <Route path="traffic-sources" element={<TrafficSources />} />
+          <Route path="email-list" element={<EmailList />} />
           <Route path="engagement" element={<EngagementMetrics />} />
           <Route path="conversion" element={<ConversionMetrics />} />
           <Route path="technical" element={<TechnicalPerformance />} />

@@ -1006,6 +1006,96 @@ app.get("/api/customers", async (req, res) => {
   }
 });
 
+// MongoDB: Get email list - customers with email addresses
+app.get("/api/email-list", async (req, res) => {
+  try {
+    if (!db) {
+      return res.status(503).json({
+        success: false,
+        error: "Database not connected",
+      });
+    }
+
+    const customersCollection = db.collection("customers");
+    
+    // Find all customers that have an email field
+    const customers = await customersCollection
+      .find({
+        email: { $exists: true, $ne: null, $ne: "" }
+      })
+      .toArray();
+
+    // Format data with required fields
+    const formattedList = customers.map((customer) => {
+      // Concatenate firstName + lastName
+      const fullName =
+        [customer.firstName, customer.lastName].filter(Boolean).join(" ") ||
+        "N/A";
+
+      // Format address (street, city, state)
+      let fullAddress = "N/A";
+      if (
+        customer.shipping_address &&
+        typeof customer.shipping_address === "object"
+      ) {
+        const { street, city, state } = customer.shipping_address;
+
+        const addressParts = [street, city, state].filter(
+          (part) => part && part.trim() !== ""
+        );
+
+        if (addressParts.length > 0) {
+          fullAddress = addressParts.join(", ");
+        }
+      }
+
+      return {
+        _id: customer._id,
+        email: customer.email.toLowerCase().trim(),
+        fullName,
+        fullAddress,
+        createdAt: customer.createdAt || customer.created_at || null,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        shipping_address: customer.shipping_address,
+      };
+    });
+
+    // Remove duplicates - keep only the most recent entry per email
+    const emailMap = new Map();
+    formattedList.forEach((customer) => {
+      const existingCustomer = emailMap.get(customer.email);
+      
+      if (!existingCustomer) {
+        emailMap.set(customer.email, customer);
+      } else {
+        // Keep the one with the most recent date
+        const existingDate = existingCustomer.createdAt ? new Date(existingCustomer.createdAt) : new Date(0);
+        const currentDate = customer.createdAt ? new Date(customer.createdAt) : new Date(0);
+        
+        if (currentDate > existingDate) {
+          emailMap.set(customer.email, customer);
+        }
+      }
+    });
+
+    // Convert map to array and sort by date (most recent first)
+    const emailList = Array.from(emailMap.values()).sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB - dateA; // Descending order (newest first)
+    });
+
+    res.json({ success: true, data: emailList });
+  } catch (error) {
+    console.error("Error fetching email list:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
 // MongoDB: Update Packed status for a draftbox
 app.patch(
   "/api/customers/:customerId/draftbox/:month/packed",
